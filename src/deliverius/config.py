@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field, SecretStr
@@ -61,6 +62,11 @@ class Settings(BaseSettings):
     database_idle_in_transaction_timeout_ms: int = Field(default=10_000, gt=0)
 
     health_check_timeout_seconds: float = Field(default=2.0, gt=0)
+
+    retrieval_model_dir: Path = Path("models/multilingual-e5-small")
+    # Provisional until the evaluation of the search fixes the measured value.
+    retrieval_min_similarity: float = Field(default=0.80, ge=0, le=1)
+    retrieval_threads: int = Field(default=1, ge=1)
 
     log_level: LogLevel = "INFO"
     log_format: LogFormat = "json"

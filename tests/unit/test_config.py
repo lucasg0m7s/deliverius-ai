@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -206,3 +208,51 @@ def test_the_hugging_face_token_never_shows_in_the_settings_text(
     assert settings.hf_token.get_secret_value() == "unique-hf-token-value"
     assert "unique-hf-token-value" not in repr(settings)
     assert "unique-hf-token-value" not in str(settings)
+
+
+def test_retrieval_defaults() -> None:
+    settings = build_settings()
+
+    assert settings.retrieval_model_dir == Path("models/multilingual-e5-small")
+    assert settings.retrieval_min_similarity == 0.80
+    assert settings.retrieval_threads == 1
+
+
+def test_retrieval_settings_come_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("RETRIEVAL_MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("RETRIEVAL_MIN_SIMILARITY", "0.85")
+    monkeypatch.setenv("RETRIEVAL_THREADS", "4")
+
+    settings = build_settings()
+
+    assert settings.retrieval_model_dir == tmp_path
+    assert settings.retrieval_min_similarity == 0.85
+    assert settings.retrieval_threads == 4
+
+
+@pytest.mark.parametrize(
+    ("variable", "value"),
+    [
+        ("RETRIEVAL_MIN_SIMILARITY", "-0.1"),
+        ("RETRIEVAL_MIN_SIMILARITY", "1.1"),
+        ("RETRIEVAL_THREADS", "0"),
+    ],
+)
+def test_retrieval_settings_out_of_range_are_rejected(
+    monkeypatch: pytest.MonkeyPatch, variable: str, value: str
+) -> None:
+    monkeypatch.setenv(variable, value)
+
+    with pytest.raises(ValidationError, match=variable.lower()):
+        build_settings()
+
+
+@pytest.mark.parametrize("value", ["0", "1"])
+def test_retrieval_similarity_accepts_both_ends(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("RETRIEVAL_MIN_SIMILARITY", value)
+
+    assert build_settings().retrieval_min_similarity == float(value)
