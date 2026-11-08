@@ -1,0 +1,60 @@
+{"document":"POL-01","id":"01a19467-e418-7c2d-a6e3-93d81597eadd","question":"Até que momento posso desistir da compra e cancelar sem problemas?","section":"Quando se aplica"}
+{"document":"POL-01","id":"01a19467-e418-79df-9c1c-9d8cb410109e","question":"Posso cancelar o pedido se o restaurante já tiver aceitado mas o entregador ainda não saiu?","section":"O que o Deliverius faz"}
+{"document":"POL-01","id":"01a19467-e418-7def-ab99-e943ed036326","question":"Ate que momento consigo desistir da compra e cancelar sem problemas?","section":"Prazo"}
+{"document":"POL-01","id":"01a19467-e418-70d2-b6ef-63dc92596294","question":"O cozinheiro já tinha aceitado o meu pedido e eu cancelei. Alguém vai olhar isso?","section":"Quando uma pessoa analisa"}
+{"document":"POL-01","id":"01a19467-e418-76ab-bcae-5286b11c736b","question":"Meu pedido foi cancelado depois que o estabelecimento confirmou. Como funciona a análise?","section":"Quando uma pessoa analisa"}
+{"document":"POL-02","id":"01a19467-e418-7857-8e58-41c52e105e6c","question":"Meu pedido está demorando mais do que o horário que aparecia na tela, posso reclamar de atraso agora?","section":"Quando se aplica"}
+{"document":"POL-02","id":"01a19467-e418-756f-be5a-70c6b0082307","question":"Meu pedido demorou mais de uma hora para chegar, qual compensação eu recebo?","section":"O que o Deliverius faz"}
+{"document":"POL-02","id":"01a19467-e418-7aa3-9329-076cb8ffda1f","question":"A minha entrega demorou muito e queria saber qual o prazo máximo para eu reclamar disso no aplicativo.","section":"Prazo"}
+{"document":"POL-02","id":"01a19467-e418-74dd-9bf5-9a80651e3cf0","question":"Meu cupom de desconto alto precisa passar por aprovação humana?","section":"Quando uma pessoa analisa"}
+{"document":"POL-02","id":"01a19467-e418-7460-aa74-6555a199012a","question":"Quem verifica o meu pedido de reembolso de valor mais alto?","section":"Quando uma pessoa analisa"}
+{"document":"POL-03","id":"01a19467-e418-74e9-baf0-9cae70217205","question":"O entregador esqueceu metade da minha compra e veio faltando produto que eu já paguei, o que eu faço?","section":"Quando se aplica"}
+{"document":"POL-03","id":"01a19467-e418-7e8b-94b4-5ba01b94c3c6","question":"Como sou pago de volta se faltou comida na minha entrega?","section":"O que o Deliverius faz"}
+{"document":"POL-03","id":"01a19467-e418-7d89-b7a6-e5ec8a7c7217","question":"Até que horas posso avisar se faltou um item no meu pedido que chegou ontem?","section":"Prazo"}
+{"document":"POL-03","id":"01a19467-e418-77a0-81a8-7e39e11c3439","question":"Meu reembolso passou de cinquenta reais e agora fica pendente de análise humana, por que isso acontece?","section":"Quando uma pessoa analisa"}
+{"document":"POL-03","id":"01a19467-e418-773a-afd9-d0655f54d7e0","question":"Ultrapassei o limite de cem reais em devoluções nos últimos trinta dias e minha solicitação foi para análise, quanto tempo demora?","section":"Quando uma pessoa analisa"}
+{"document":"POL-04","id":"01a19467-e418-76df-831f-663b6ade078b","question":"Recebi um produto totalmente diferente do que selecionei no cardapio, o que eu faço?","section":"Quando se aplica"}
+{"document":"POL-04","id":"01a19467-e418-72b3-b323-ddfd97e5944e","question":"recebi um produto errado na minha compra, vou receber o dinheiro de volta de tudo ou só da coisa que veio trocada?","section":"O que o Deliverius faz"}
+{"document":"POL-04","id":"01a19467-e418-78c7-8eb4-b87bd63479b4","question":"Até que horas posso reportar que meu pedido veio incorreto?","section":"Prazo"}
+{"document":"POL-04","id":"01a19467-e418-7a22-880d-61151d53747d","question":"Por que meu pedido de reembolso que passou de cinquenta reais foi para análise humana?","section":"Quando uma pessoa analisa"}
+{"document":"POL-04","id":"01a19467-e418-7a64-96d4-8479db478399","question":"Ultrapassei cem reais em devoluções no último mês e agora um atendente precisa olhar meu caso?","section":"Quando uma pessoa analisa"}
+{"document":"POL-05","id":"01a19467-e418-7dbf-8391-a69610cf86f8","question":"Meu lanche veio todo amassado e a comida estava gelada, posso reclamar?","section":"Quando se aplica"}
+{"document":"POL-05","id":"01a19467-e418-75ef-a2fa-75f35aa5c7b5","question":"Meu lanche veio errado e faltando coisa, qual tipo de desconto ou dinheiro de volta eu consigo receber por esse transtorno?","section":"O que o Deliverius faz"}
+{"document":"POL-05","id":"01a19467-e418-7c30-a979-a1479bb140b6","question":"Até que horas posso reclamar caso venha algo errado no meu pedido?","section":"Prazo"}
+{"document":"POL-05","id":"01a19467-e418-79aa-8463-2cc0fa95fa57","question":"Meu pedido deu um valor alto de reembolso, alguém da equipe vai olhar meu caso?","section":"Quando uma pessoa analisa"}
+{"document":"POL-05","id":"01a19467-e418-7750-887c-85683437fcb7","question":"Quem avalia quando peço um cupom de desconto alto por causa de um problema?","section":"Quando uma pessoa analisa"}
+{"document":"POL-06","id":"01a19467-e418-71d0-b6da-4d43bf36d054","question":"Minha compra sumiu e não chegou aqui em casa, o que eu faço?","section":"Quando se aplica"}
+{"document":"POL-06","id":"01a19467-e418-7e70-8b43-61fc24a07443","question":"O entregador marcou que o lanche foi entregue mas eu não recebi nada, o que vocês fazem?","section":"O que o Deliverius faz"}
+{"document":"POL-06","id":"01a19467-e418-7252-bd98-b34215f2033d","question":"Até quantas horas depois eu posso reclamar se o meu pedido não chegou ou deu problema?","section":"Prazo"}
+{"document":"POL-06","id":"01a19467-e418-7cb5-9cb0-de1beae9da77","question":"Alguém de verdade olha o meu caso quando digo que a entrega não chegou?","section":"Quando uma pessoa analisa"}
+{"document":"POL-06","id":"01a19467-e418-7835-9827-300f5ec61706","question":"Pediu mais de cinquenta reais de reembolso e agora, vai para análise humana?","section":"Quando uma pessoa analisa"}
+{"document":"POL-07","id":"01a19467-e418-7ffb-b788-dcc1dd4f210f","question":"Meu pedido foi cobrado duas vezes no cartão, como faço para resolver isso?","section":"Quando se aplica"}
+{"document":"POL-07","id":"01a19467-e418-71e8-8767-e563440a26be","question":"Fui cobrado duas vezes pelo mesmo pedido, como a empresa devolve esse dinheiro e qual o valor que vou receber de volta?","section":"O que o Deliverius faz"}
+{"document":"POL-07","id":"01a19467-e418-7e3c-b368-4e7f2846912a","question":"Até quantos dias depois da entrega eu posso pedir o reembolso de uma compra que veio errada?","section":"Prazo"}
+{"document":"POL-07","id":"01a19467-e418-76e3-aea9-645347f78de7","question":"Alguém de verdade confere a cobrança dupla antes de me devolver o dinheiro?","section":"Quando uma pessoa analisa"}
+{"document":"POL-07","id":"01a19467-e418-765b-850b-4e5950f38d9c","question":"Como é feita a verificação quando cobram duas vezes pelo mesmo pedido?","section":"Quando uma pessoa analisa"}
+{"document":"POL-08","id":"01a19467-e418-7fac-9b82-09179bc9e92e","question":"Em quais casos o suporte prefere me dar um cupom de desconto em vez de estornar o dinheiro direto no meu cartão?","section":"Quando se aplica"}
+{"document":"POL-08","id":"01a19467-e418-72dd-88dc-37f47466e472","question":"Posso transferir o cupom que recebi de compensação para a conta de um amigo?","section":"O que o Deliverius faz"}
+{"document":"POL-08","id":"01a19467-e418-7c27-b6d0-9246cab9ab3d","question":"Onde eu vejo até quando meu cupom vale?","section":"Prazo"}
+{"document":"POL-08","id":"01a19467-e418-738a-83d0-08b701aa0ed5","question":"Por que meu cupom com valor maior que vinte reais ficou em analise?","section":"Quando uma pessoa analisa"}
+{"document":"POL-08","id":"01a19467-e418-7afb-b347-5fa57db1fe33","question":"Preciso esperar alguem aprovar um desconto alto que eu recebi?","section":"Quando uma pessoa analisa"}
+{"document":"POL-09","id":"01a19467-e418-7cba-8b5b-6d8920aea2f8","question":"O entregador trouxe um prato com um ingrediente que eu pedi para tirar e passo mal se comer, posso reclamar disso?","section":"Quando se aplica"}
+{"document":"POL-09","id":"01a19467-e418-741f-8752-7138f4b6e3cf","question":"Senti mal estar depois de comer a comida que pedi no app, o que devo fazer agora?","section":"O que o Deliverius faz"}
+{"document":"POL-09","id":"01a19467-e418-7bc4-961c-05e1a086aedd","question":"Quanto tempo eu tenho para reclamar se minha comida veio com um ingrediente que me dá alergia?","section":"Prazo"}
+{"document":"POL-09","id":"01a19467-e418-741c-ab50-86351a06b595","question":"Alguém de verdade olha quando a gente avisa sobre alergia ou é só robô que decide?","section":"Quando uma pessoa analisa"}
+{"document":"POL-09","id":"01a19467-e418-7908-a855-c9916f35cf27","question":"O aplicativo usa computador ou tem gente humana olhando os problemas com comida?","section":"Quando uma pessoa analisa"}
+{"document":"POL-10","id":"01a19467-e418-7e9d-a085-cdf1025d03e6","question":"Em quais situações eu posso relatar um problema grave com a conduta do entregador?","section":"Quando se aplica"}
+{"document":"POL-10","id":"01a19467-e418-7255-aeca-3ec3279de27f","question":"Estou correndo perigo agora com o entregador, o que eu faço?","section":"O que o Deliverius faz"}
+{"document":"POL-10","id":"01a19467-e418-79f3-9557-203b68851e93","question":"Quanto tempo eu tenho para reclamar sobre algum problema no pedido que acabei de receber?","section":"Prazo"}
+{"document":"POL-10","id":"01a19467-e418-72f3-a742-1356cebe6fb2","question":"Tem algum computador que decide sozinho sobre o meu problema ou alguém de verdade olha o caso?","section":"Quando uma pessoa analisa"}
+{"document":"POL-10","id":"01a19467-e418-784f-8950-9f60d138c015","question":"A análise do meu problema é feita por robô ou tem uma equipe verificando tudo?","section":"Quando uma pessoa analisa"}
+{"document":"POL-11","id":"01a19467-e418-7734-a416-307d2c7a8dc3","question":"Em qual momento eu recebo o meu dinheiro de volta depois que o suporte aceita o meu pedido de estorno?","section":"Quando se aplica"}
+{"document":"POL-11","id":"01a19467-e418-7fc9-bba7-9a55a41bab79","question":"Como vou receber o dinheiro de volta e o valor pode vir maior do que paguei?","section":"O que o Deliverius faz"}
+{"document":"POL-11","id":"01a19467-e418-7c36-8b6c-2af8bc90d5d1","question":"Quanto tempo demora para o dinheiro cair na minha conta quando recebo o reembolso pagando com Pix?","section":"Prazo"}
+{"document":"POL-11","id":"01a19467-e418-75cb-8b91-cc9bb82e6db7","question":"Por que meu reembolso de cem reais está demorando mais do que o normal para ser aprovado?","section":"Quando uma pessoa analisa"}
+{"document":"POL-11","id":"01a19467-e418-7425-8389-a5fce17142f5","question":"Existe algum limite de valor para o estorno ser liberado na hora sem passar por análise manual?","section":"Quando uma pessoa analisa"}
+{"document":"POL-12","id":"01a19467-e418-7a82-a685-9e59047a644b","question":"As regras de privacidade valem para todas as vezes que eu falo com o suporte?","section":"Quando se aplica"}
+{"document":"POL-12","id":"01a19467-e418-72ae-871f-123682b8b843","question":"Vocês escondem meus dados pessoais quando fazem análises no sistema?","section":"O que o Deliverius faz"}
+{"document":"POL-12","id":"01a19467-e418-75be-9dc4-76ff24684a92","question":"quanto tempo vocês guardam as conversas que tive com o suporte e posso mandar apagar minhas informações daqui?","section":"Prazo"}
+{"document":"POL-12","id":"01a19467-e418-79e9-80ea-7aa7a56b86a0","question":"Quem é que olha os pedidos que a gente faz sobre nossos dados?","section":"Quando uma pessoa analisa"}
+{"document":"POL-12","id":"01a19467-e418-74f8-bf79-0622be9a3171","question":"Tem alguém da empresa que revisa quando a gente pede informações sobre a conta?","section":"Quando uma pessoa analisa"}
