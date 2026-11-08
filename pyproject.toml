@@ -1,0 +1,240 @@
+[project]
+name = "deliverius"
+version = "0.1.0"
+description = "Deli, the AI customer-support agent of Deliverius, a fictional delivery app"
+readme = "README.md"
+authors = [
+    { name = "Lucas Gomes Ferreira", email = "lucas_gomes26@outlook.com" }
+]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "alembic>=1.20.1",
+    "asyncpg>=0.32.0",
+    "fastapi[standard]>=0.162.0",
+    "langchain-anthropic>=1.7",
+    "langchain-core>=1.7",
+    "langchain-google-genai>=4",
+    "langchain-openai>=1.7",
+    "pgvector>=0.5.1",
+    "pydantic-settings>=2.16.2",
+    "sqlalchemy[asyncio]>=2.1.6",
+    "structlog>=26.1.0",
+    "uuid-utils>=0.12.0,<1.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "hypothesis>=6.0.0",
+    "import-linter>=2.0",
+    "mypy>=2.4.1",
+    "pip-audit>=2.7.0",
+    "pre-commit>=4.0.0",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.17.3",
+    "testcontainers[postgres]>=4.9.0",
+]
+# Dataset generation and publication: a developer tool, never in the application image.
+datagen = [
+    "faker>=40.44.0",
+    "huggingface-hub>=1.0",
+]
+
+[tool.uv]
+default-groups = ["dev", "datagen"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "B", "UP", "SIM", "ASYNC", "S", "N", "RUF",
+    "PT", "TRY", "PERF", "C4", "FURB", "PL", "DTZ", "T20",
+]
+ignore = [
+    "PLR2004", # magic value comparison: noisy for HTTP status codes and thresholds
+    "PLR0913", # too many arguments: dependencies are injected explicitly
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# Frozen value objects: safe as dataclass and argument defaults (RUF009, B008).
+extend-immutable-calls = ["deliverius.shared.money.Money"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"migrations/**" = ["N999"]
+
+[tool.mypy]
+strict = true
+# The policy model and LLM call result tests hold exhaustive `match`es: mypy proves each covers every case.
+files = ["src", "tests/unit/policy/test_policy_models.py", "tests/unit/llm/test_llm_call_result.py"]
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Shared test helpers (builders, contract suites) live in tests/support.
+pythonpath = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-m 'not integration and not llm' --cov=src/deliverius --cov-report=term-missing --cov-fail-under=85"
+markers = [
+    "integration: needs Docker (Testcontainers starts a throwaway Postgres with pgvector)",
+    "llm: calls a real LLM provider (cost and rate limits)",
+]
+
+[tool.coverage.run]
+branch = true
+omit = ["*/__main__.py"]
+
+[tool.importlinter]
+root_package = "deliverius"
+# Needed so contracts can forbid third-party packages, not just our own modules.
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "shared is pure: no database, web, logging, LLM or HTTP libraries"
+type = "forbidden"
+source_modules = ["deliverius.shared"]
+forbidden_modules = [
+    "sqlalchemy",
+    "fastapi",
+    "structlog",
+    "httpx",
+    "langgraph",
+    "langchain",
+    "langchain_core",
+]
+
+[[tool.importlinter.contracts]]
+name = "policy is pure: decides from facts, with no I/O, logging or LLM"
+type = "forbidden"
+source_modules = ["deliverius.policy"]
+forbidden_modules = [
+    "sqlalchemy",
+    "fastapi",
+    "structlog",
+    "httpx",
+    "langgraph",
+    "langchain",
+    "langchain_core",
+    "deliverius.db",
+    "deliverius.observability",
+    "deliverius.api",
+]
+
+[[tool.importlinter.contracts]]
+name = "privacy is pure: masks text, with no I/O, logging or LLM"
+type = "forbidden"
+source_modules = ["deliverius.privacy"]
+forbidden_modules = [
+    "sqlalchemy",
+    "fastapi",
+    "structlog",
+    "httpx",
+    "langgraph",
+    "langchain",
+    "langchain_core",
+    "deliverius.db",
+    "deliverius.observability",
+    "deliverius.api",
+    "deliverius.orders",
+    "deliverius.policy",
+]
+
+[[tool.importlinter.contracts]]
+name = "utilities do not import domain or entry modules"
+type = "forbidden"
+source_modules = [
+    "deliverius.shared",
+    "deliverius.db",
+    "deliverius.observability",
+    "deliverius.config",
+]
+forbidden_modules = [
+    "deliverius.orders",
+    "deliverius.policy",
+    "deliverius.privacy",
+    "deliverius.llm",
+    "deliverius.api",
+]
+
+[[tool.importlinter.contracts]]
+name = "the application never imports the development tools (datagen, cli)"
+type = "forbidden"
+source_modules = [
+    "deliverius.api",
+    "deliverius.config",
+    "deliverius.db",
+    "deliverius.llm",
+    "deliverius.observability",
+    "deliverius.orders",
+    "deliverius.policy",
+    "deliverius.privacy",
+    "deliverius.shared",
+]
+forbidden_modules = ["deliverius.datagen", "deliverius.cli"]
+
+[[tool.importlinter.contracts]]
+name = "layers: entry points above pure rules, pure rules above the delivery domain"
+type = "layers"
+layers = [
+    "deliverius.cli",
+    "deliverius.api | deliverius.datagen",
+    "deliverius.llm",
+    "deliverius.policy | deliverius.privacy",
+    "deliverius.orders",
+]
+
+[[tool.importlinter.contracts]]
+name = "provider integrations live only in llm"
+type = "forbidden"
+# Every module except llm. A new top-level module must be added here when it is created.
+source_modules = [
+    "deliverius.api",
+    "deliverius.cli",
+    "deliverius.config",
+    "deliverius.datagen",
+    "deliverius.db",
+    "deliverius.observability",
+    "deliverius.orders",
+    "deliverius.policy",
+    "deliverius.privacy",
+    "deliverius.shared",
+]
+# `google` is the root of `google.genai`: import-linter cannot name a subpackage of an external one.
+forbidden_modules = [
+    "langchain_google_genai",
+    "langchain_openai",
+    "langchain_anthropic",
+    "google",
+    "openai",
+    "anthropic",
+]
+# `bootstrap -> llm -> provider` will be legitimate; only a direct import is a violation.
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "langchain_core lives only in llm"
+type = "forbidden"
+source_modules = [
+    "deliverius.api",
+    "deliverius.cli",
+    "deliverius.config",
+    "deliverius.datagen",
+    "deliverius.db",
+    "deliverius.observability",
+    "deliverius.orders",
+    "deliverius.policy",
+    "deliverius.privacy",
+    "deliverius.shared",
+]
+forbidden_modules = ["langchain_core"]
+allow_indirect_imports = true

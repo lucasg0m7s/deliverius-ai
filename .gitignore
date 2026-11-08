@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+
+# Tooling
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# ML: large artifacts live in MLflow or Hugging Face, not in git
+mlruns/
+mlartifacts/
+models/
+data/raw/
+data/generated/
+*.onnx
+*.safetensors
+*.pt
+*.bin
+
+# Notebooks and OS
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+
+# Author's private context
+CLAUDE.local.md
+
+# Local response cache of evals and data generation (llm/cache.py): never committed
+.cache/
+
+# Test and lint caches
+.hypothesis/
+.import_linter_cache/

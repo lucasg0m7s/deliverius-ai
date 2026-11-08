@@ -1,0 +1,76 @@
+import asyncio
+from collections.abc import Iterator
+
+import asyncpg
+import pytest
+from alembic import command
+from alembic.config import Config
+from sqlalchemy.engine import make_url
+from support.database import ALEMBIC_INI, create_database, drop_database
+from testcontainers.community.postgres import PostgresContainer
+
+pytestmark = pytest.mark.integration
+
+DOMAIN_TABLES = {
+    "customers",
+    "restaurants",
+    "orders",
+    "order_items",
+    "delivery_events",
+    "audit_log",
+}
+LLM_TABLES = {"llm_calls", "llm_budget_usage"}
+ALL_TABLES = DOMAIN_TABLES | LLM_TABLES
+
+
+@pytest.fixture
+def fresh_database_url(postgres_container: PostgresContainer) -> Iterator[str]:
+    name = "migration_round_trip"
+    admin_dsn = postgres_container.get_connection_url(driver=None)
+    asyncio.run(create_database(admin_dsn, name))
+    try:
+        yield (
+            make_url(postgres_container.get_connection_url())
+            .set(database=name)
+            .render_as_string(hide_password=False)
+        )
+    finally:
+        asyncio.run(drop_database(admin_dsn, name))
+
+
+async def public_tables(database_url: str) -> set[str]:
+    dsn = make_url(database_url).set(drivername="postgresql").render_as_string(hide_password=False)
+    connection = await asyncpg.connect(dsn)
+    try:
+        rows = await connection.fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+    finally:
+        await connection.close()
+    return {row["tablename"] for row in rows} - {"alembic_version"}
+
+
+def migration_config(database_url: str) -> Config:
+    config = Config(str(ALEMBIC_INI))
+    config.set_main_option("sqlalchemy.url", database_url)
+    return config
+
+
+def test_upgrade_downgrade_upgrade_round_trip(fresh_database_url: str) -> None:
+    config = migration_config(fresh_database_url)
+
+    command.upgrade(config, "head")
+    assert asyncio.run(public_tables(fresh_database_url)) == ALL_TABLES
+
+    command.downgrade(config, "0001")
+    assert asyncio.run(public_tables(fresh_database_url)) == set()
+
+    command.upgrade(config, "head")
+    assert asyncio.run(public_tables(fresh_database_url)) == ALL_TABLES
+
+
+def test_llm_migration_downgrade_removes_only_its_tables(fresh_database_url: str) -> None:
+    config = migration_config(fresh_database_url)
+    command.upgrade(config, "head")
+
+    command.downgrade(config, "-1")
+
+    assert asyncio.run(public_tables(fresh_database_url)) == DOMAIN_TABLES

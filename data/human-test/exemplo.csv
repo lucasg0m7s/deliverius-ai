@@ -1,0 +1,3 @@
+id,text,intent,notes
+exemplo-1,"Pedi uma pizza e um refrigerante e o refrigerante não veio na sacola.",item_missing,Exemplo de formato. Não copie para o arquivo final.
+exemplo-2,"Boa tarde! Vocês funcionam aos domingos?",other,Exemplo de formato. Não copie para o arquivo final.
