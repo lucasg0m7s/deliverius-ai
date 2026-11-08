@@ -8,9 +8,11 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     ForeignKey,
@@ -19,12 +21,13 @@ from sqlalchemy import (
     Integer,
     MetaData,
     PrimaryKeyConstraint,
+    SmallInteger,
     Text,
     UniqueConstraint,
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from deliverius.shared.audit import AuditActorType
@@ -269,3 +272,29 @@ class LlmBudgetUsageRow(Base):
     day: Mapped[date] = mapped_column(Date)
     requests_used: Mapped[int] = mapped_column(Integer)
     tokens_used: Mapped[int] = mapped_column(BigInteger)
+
+
+class PolicyChunkRow(Base):
+    """One section of a policy document, with its embedding. About fifty rows, public to everyone.
+
+    `tsv` is generated from `content`; there is no vector index on purpose (an exact scan of fifty
+    rows is instant and never misses). A HNSW index is worth it once this grows to thousands.
+    """
+
+    __tablename__ = "policy_chunks"
+    __table_args__ = (
+        Index("ix_policy_chunks_tsv", "tsv", postgresql_using="gin"),
+        Index("ix_policy_chunks_document_id", "document_id"),
+    )
+
+    chunk_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    document_id: Mapped[str] = mapped_column(Text)
+    section: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(SmallInteger)
+    content: Mapped[str] = mapped_column(Text)
+    document_hash: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[Any] = mapped_column(Vector(384))
+    tsv: Mapped[str] = mapped_column(
+        TSVECTOR, Computed("to_tsvector('pt_unaccent', content)", persisted=True)
+    )
+    indexed_at: Mapped[datetime]
