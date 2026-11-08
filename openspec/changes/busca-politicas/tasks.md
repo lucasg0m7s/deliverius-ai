@@ -1,18 +1,18 @@
 ## 1. Preparação
 
-- [ ] 1.1 `onnxruntime`, `tokenizers`, `numpy` e `huggingface-hub` nas dependências da aplicação (`huggingface-hub` sai do grupo `datagen`); `uv.lock` atualizado, `pip-audit` sem nada novo; teste de que importar `deliverius.retrieval` não carrega `torch` nem `transformers`
-- [ ] 1.2 Criar `src/deliverius/retrieval/`; import-linter: `retrieval` na camada de capacidades, contrato "onnxruntime e tokenizers só em retrieval", e `retrieval` nas fontes dos contratos de provedor de LLM e de `langchain_core`; `lint-imports` passa
-- [ ] 1.3 `RETRIEVAL_MODEL_DIR`, `RETRIEVAL_MIN_SIMILARITY` e `RETRIEVAL_THREADS` no `Settings` e no `.env.example`, com testes; `models/` já está no `.gitignore` (conferir)
+- [x] 1.1 `onnxruntime`, `tokenizers`, `numpy` e `huggingface-hub` nas dependências da aplicação (`huggingface-hub` sai do grupo `datagen`); `uv.lock` atualizado, `pip-audit` sem nada novo; teste de que importar `deliverius.retrieval` não carrega `torch` nem `transformers`
+- [x] 1.2 Criar `src/deliverius/retrieval/`; import-linter: `retrieval` na camada de capacidades, contrato "onnxruntime e tokenizers só em retrieval", e `retrieval` nas fontes dos contratos de provedor de LLM e de `langchain_core`; `lint-imports` passa
+- [x] 1.3 `RETRIEVAL_MODEL_DIR`, `RETRIEVAL_MIN_SIMILARITY` e `RETRIEVAL_THREADS` no `Settings` e no `.env.example`, com testes; `models/` já está no `.gitignore` (conferir)
 
 ## 2. Modelo
 
-- [ ] 2.1 `model_files.py`: revisão, nomes, tamanhos e SHA-256 (o do `tokenizer.json` e do `config.json` calculados no primeiro download e fixados no código); download com `hf_hub_download(revision=...)` e conferência; testes com arquivos falsos em `tmp_path`: hash divergente recusado citando o arquivo, arquivo ausente, download pulado quando os arquivos conferem
-- [ ] 2.2 `embedder.py`: `E5Embedder` com prefixos, truncamento em 512 tokens, média com máscara e normalização L2, sessão única; testes unitários com uma sessão ONNX falsa (forma, máscara, normalização, prefixo aplicado) e teste marcado `integration` com o modelo real: 384 dimensões, norma 1, paráfrase mais próxima que outro assunto
+- [x] 2.1 `model_files.py`: revisão, nomes, tamanhos e SHA-256 (o do `tokenizer.json` e do `config.json` calculados no primeiro download e fixados no código); download com `hf_hub_download(revision=...)` e conferência; testes com arquivos falsos em `tmp_path`: hash divergente recusado citando o arquivo, arquivo ausente, download pulado quando os arquivos conferem
+- [x] 2.2 `embedder.py`: `E5Embedder` com prefixos, truncamento em 512 tokens, média com máscara e normalização L2, sessão única; testes unitários com uma sessão ONNX falsa (forma, máscara, normalização, prefixo aplicado) e teste marcado `integration` com o modelo real: 384 dimensões, norma 1, paráfrase mais próxima que outro assunto
 
 ## 3. Banco
 
-- [ ] 3.1 Migration `0004`: `unaccent`, configuração `pt_unaccent`, tabela `policy_chunks` com `tsv` gerado, GIN e índice em `document_id`, `lock_timeout`; `db/tables.py`; o teste de migrations faz ida e volta
-- [ ] 3.2 Integração: `to_tsvector('pt_unaccent', 'não chegou')` casa com a consulta `nao chegou`; `EXPLAIN` da busca lexical usa o GIN
+- [x] 3.1 Migration `0004`: `unaccent`, configuração `pt_unaccent`, tabela `policy_chunks` com `tsv` gerado, GIN e índice em `document_id`, `lock_timeout`; `db/tables.py`; o teste de migrations faz ida e volta
+- [x] 3.2 Integração: `to_tsvector('pt_unaccent', 'não chegou')` casa com a consulta `nao chegou`; `EXPLAIN` da busca lexical usa o GIN
 
 ## 4. Indexação
 
