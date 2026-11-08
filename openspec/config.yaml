@@ -1,0 +1,35 @@
+schema: spec-driven
+
+context: |
+  Language: pt-BR
+  All artifacts must be written in pt-BR.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Deliverius AI — projeto de portfólio. O Deliverius é um app de delivery fictício; o Deli é seu agente de
+  atendimento (Python 3.13, FastAPI, LangGraph, PostgreSQL + pgvector), que age dentro da política com aprovação humana, apoiado por modelos próprios (classificador de
+  intenção BERTimbau, antifraude LightGBM).
+
+  Fonte da verdade, não duplicar aqui:
+  - `CLAUDE.md` — comandos, verificação e convenções.
+  - `docs/requisitos.md` — requisitos do projeto (R01–R26) → parte do projeto → evidência pública.
+  - `docs/roadmap.md` — changes nomeadas, com escopo, dependências, requisitos e critério de pronto.
+  - `docs/decisoes-arquitetura.md` — decisões com alternativas consideradas.
+  - `docs/arquitetura.md` — fluxo de uma mensagem, módulos e regras de dependência.
+
+rules:
+  proposal:
+    - Diga o número e o nome da change no docs/roadmap.md e os IDs de requisito (R01–R26) que ela cobre
+    - Copie o escopo, o fora de escopo e o critério de pronto do docs/roadmap.md; mudou, atualize o roadmap
+    - Não cite o contexto pessoal do autor; o repositório é genérico (ver CLAUDE.md)
+    - Declare explicitamente o que fica fora de escopo
+    - Prefira changes pequenas, revisáveis numa sentada
+  design:
+    - Registre as alternativas consideradas e por que a escolha venceu; decisão nova também entra em docs/decisoes-arquitetura.md
+    - Responda ao checklist de docs/robustez.md, seção 11 (autorização, corrida, idempotência, timeout, limite, falha no meio, entrada, compatibilidade, eventos de log); "não se aplica" vale se escrito
+    - Sinalize decisões humanas pendentes em vez de assumi-las
+    - Para qualquer coisa que envolva LLM ou modelo, diga como será avaliada (métrica, conjunto, limiar)
+  tasks:
+    - Para cada corrida apontada no design, inclua um teste de integração que dispara as operações juntas
+    - Para cada rota ou ferramenta nova, inclua a linha no teste da matriz de autorização
+    - Inclua uma seção final de verificação com os comandos do CLAUDE.md
+    - Inclua o que vai para o README (resultado, número, link) quando a change produzir evidência pública
