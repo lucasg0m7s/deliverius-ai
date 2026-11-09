@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 
 import pytest
 from alembic import command
@@ -9,10 +10,13 @@ from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from support.database import ALEMBIC_INI, create_database, drop_database, settings_for
+from support.retrieval_database import drop_policies, index_policies
 from testcontainers.community.postgres import PostgresContainer
 
+from deliverius.config import Settings
 from deliverius.db.engine import create_engine
 from deliverius.db.session import create_session_factory
+from deliverius.retrieval import E5Embedder, ModelFileError
 
 PGVECTOR_IMAGE = "pgvector/pgvector:pg17"
 
@@ -101,3 +105,30 @@ async def llm_usage_factory(engine: AsyncEngine) -> AsyncIterator[async_sessionm
         yield create_session_factory(engine)
     finally:
         await clean()
+
+
+@pytest.fixture(scope="session")
+def embedder() -> E5Embedder:
+    """The real embedding model. Missing or wrong files fail the test: they never skip it."""
+    model_dir = Settings(_env_file=None).retrieval_model_dir  # type: ignore[call-arg]
+    try:
+        return E5Embedder.load(Path(model_dir), threads=2)
+    except ModelFileError as error:
+        pytest.fail(
+            f"the embedding model is not ready ({error}); "
+            "run `python -m deliverius.cli retrieval fetch-model` first",
+            pytrace=False,
+        )
+
+
+@pytest.fixture(scope="module")
+def indexed_policies(migrated_database_url: str, embedder: E5Embedder) -> Iterator[str]:
+    """The twelve policy documents indexed with the real model; the table is emptied afterwards.
+
+    Other modules insert their own rows into `policy_chunks`, so nothing may outlive the module.
+    """
+    asyncio.run(index_policies(migrated_database_url, embedder))
+    try:
+        yield migrated_database_url
+    finally:
+        asyncio.run(drop_policies(migrated_database_url))

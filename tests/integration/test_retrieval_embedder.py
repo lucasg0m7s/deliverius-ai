@@ -1,25 +1,9 @@
-from pathlib import Path
-
 import numpy as np
 import pytest
 
-from deliverius.config import Settings
-from deliverius.retrieval import EMBEDDING_DIMENSIONS, E5Embedder, ModelFileError
+from deliverius.retrieval import EMBEDDING_DIMENSIONS, E5Embedder
 
 pytestmark = pytest.mark.integration
-
-
-@pytest.fixture(scope="module")
-def embedder() -> E5Embedder:
-    model_dir = Settings(_env_file=None).retrieval_model_dir  # type: ignore[call-arg]
-    try:
-        return E5Embedder.load(Path(model_dir), threads=2)
-    except ModelFileError as error:
-        pytest.fail(
-            f"the embedding model is not ready ({error}); "
-            "run `python -m deliverius.cli retrieval fetch-model` first",
-            pytrace=False,
-        )
 
 
 def test_vectors_have_384_dimensions_and_norm_one(embedder: E5Embedder) -> None:
