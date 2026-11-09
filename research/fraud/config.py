@@ -1,0 +1,93 @@
+"""The research configuration (`config.yaml`), read once and validated."""
+
+from pathlib import Path
+from typing import Any, Final
+
+import yaml
+from pydantic import BaseModel, ConfigDict, Field
+
+from deliverius.artifacts import ModelFile, PinnedRepository
+
+CONFIG_PATH: Final = Path(__file__).with_name("config.yaml")
+
+
+class _Section(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class PinnedFile(_Section):
+    name: str
+    size_bytes: int = Field(gt=0)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    def to_model_file(self) -> ModelFile:
+        return ModelFile(self.name, self.size_bytes, self.sha256)
+
+
+class DatasetSection(_Section):
+    directory: Path
+    repository: str
+    version: str
+    revision: str = Field(pattern=r"^[0-9a-f]{40}$")
+    files: tuple[PinnedFile, ...]
+
+    @property
+    def pinned(self) -> PinnedRepository:
+        return PinnedRepository(self.repository, self.revision, "dataset")
+
+    @property
+    def model_files(self) -> tuple[ModelFile, ...]:
+        return tuple(file.to_model_file() for file in self.files)
+
+
+class SplitSection(_Section):
+    year: int
+    train_months: tuple[int, ...] = Field(min_length=2)
+    validation_month: int
+    test_month: int
+
+
+class LogisticSection(_Section):
+    C: float = Field(gt=0)
+    max_iter: int = Field(gt=0)
+
+
+class LightGbmGrid(_Section):
+    num_leaves: tuple[int, ...]
+    min_child_samples: tuple[int, ...]
+    learning_rate_and_estimators: tuple[tuple[float, int], ...]
+    reg_lambda: tuple[float, ...]
+
+
+class LightGbmSection(_Section):
+    fixed: dict[str, Any]
+    grid: LightGbmGrid
+
+
+class GateSection(_Section):
+    pr_auc_margin: float = Field(ge=0)
+    brier_margin: float = Field(ge=0)
+    min_pr_auc: float | None = None
+    max_brier: float | None = None
+
+
+class ModelSection(_Section):
+    repository: str
+    version: str
+
+
+class ResearchConfig(_Section):
+    seed: int
+    dataset: DatasetSection
+    split: SplitSection
+    review_cost_cents: int = Field(gt=0)
+    bootstrap_resamples: int = Field(gt=0)
+    business_rule_claims_30d: int = Field(gt=0)
+    logistic: LogisticSection
+    lightgbm: LightGbmSection
+    gate: GateSection
+    model: ModelSection
+
+
+def load_config(path: Path = CONFIG_PATH) -> ResearchConfig:
+    return ResearchConfig.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))

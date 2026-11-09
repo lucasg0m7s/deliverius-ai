@@ -16,7 +16,9 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-      - run: uv sync --locked
+      # The research group (scikit-learn, LightGBM, MLflow) is never in the image, but its tests
+      # and the fraud model gate run here.
+      - run: uv sync --locked --group research
       - run: uv run ruff format --check .
       - run: uv run ruff check .
       - run: uv run mypy
@@ -29,6 +31,8 @@ jobs:
       # The Postgres repository is only exercised by the integration tests, so they count here too.
       - name: Actions need 100% branch coverage (unit tests plus their Postgres tests)
         run: uv run pytest tests/unit/actions tests/integration/test_actions_*.py -m "not llm" --cov-reset --cov=deliverius.actions --cov-fail-under=100
+      - name: Fraud features need 100% branch coverage
+        run: uv run pytest tests/unit/fraud --cov-reset --cov=deliverius.fraud.features --cov-fail-under=100
       - uses: actions/cache@v4
         with:
           path: models/multilingual-e5-small
@@ -37,6 +41,20 @@ jobs:
       - name: Embedding model (pinned revision, SHA-256 checked, skipped when cached)
         run: uv run python -m deliverius.cli retrieval fetch-model
       - run: uv run pytest -m integration --no-cov
+      - uses: actions/cache@v4
+        with:
+          path: models/fraud
+          # `fraud.model_files.REVISION`, first eight characters; a test keeps the two equal.
+          key: fraud-model-00000000
+      - uses: actions/cache@v4
+        with:
+          path: data/generated/v1.0.0
+          # The dataset commit pinned in `research/fraud/config.yaml`; a test keeps the two equal.
+          key: dataset-v1.0.0-cc5be095
+      - name: Fraud model (pinned revision and manifest, SHA-256 checked, skipped when cached)
+        run: uv run python -m deliverius.cli fraud fetch-model
+      - name: Fraud model gate (PR-AUC floor and Brier ceiling on the October test set)
+        run: uv run python -m research.fraud.gate
 
   security:
     runs-on: ubuntu-latest

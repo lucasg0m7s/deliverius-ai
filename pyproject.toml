@@ -48,6 +48,17 @@ dev = [
 datagen = [
     "faker>=40.44.0",
 ]
+research = [
+    "lightgbm>=4.7.0",
+    "matplotlib>=3.11.2",
+    "mlflow>=3.18.0",
+    "pandas>=3.1.1",
+    "pandas-stubs>=3.1.0.261029",
+    "pyyaml>=6.0.3",
+    "scikit-learn>=1.9.1",
+    "shap>=0.54.1",
+    "types-pyyaml>=6.0.12.20261103",
+]
 
 [tool.uv]
 default-groups = ["dev", "datagen"]
@@ -77,7 +88,12 @@ extend-immutable-calls = ["deliverius.shared.money.Money"]
 [tool.mypy]
 strict = true
 # The policy model and LLM call result tests hold exhaustive `match`es: mypy proves each covers every case.
-files = ["src", "tests/unit/policy/test_policy_models.py", "tests/unit/llm/test_llm_call_result.py"]
+files = [
+    "src",
+    "research",
+    "tests/unit/policy/test_policy_models.py",
+    "tests/unit/llm/test_llm_call_result.py",
+]
 python_version = "3.13"
 plugins = ["pydantic.mypy"]
 
@@ -86,10 +102,16 @@ plugins = ["pydantic.mypy"]
 module = ["onnxruntime"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# Research only (the `research` group): scikit-learn and shap ship neither stubs nor py.typed.
+module = ["sklearn", "sklearn.*", "shap"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# Shared test helpers (builders, contract suites) live in tests/support.
-pythonpath = ["tests"]
+# Shared test helpers (builders, contract suites) live in tests/support; `.` makes the research
+# scripts (`research.fraud`) importable.
+pythonpath = ["tests", "."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-m 'not integration and not llm' --cov=src/deliverius --cov-report=term-missing --cov-fail-under=85"
@@ -165,6 +187,7 @@ source_modules = [
     "deliverius.db",
     "deliverius.observability",
     "deliverius.config",
+    "deliverius.artifacts",
 ]
 forbidden_modules = [
     "deliverius.orders",
@@ -288,4 +311,29 @@ source_modules = [
     "deliverius.shared",
 ]
 forbidden_modules = ["onnxruntime", "tokenizers"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "research libraries never reach the application"
+type = "forbidden"
+# The `research` group is not in the image: an import would only fail in production.
+source_modules = [
+    "deliverius.actions",
+    "deliverius.api",
+    "deliverius.approvals",
+    "deliverius.artifacts",
+    "deliverius.cli",
+    "deliverius.config",
+    "deliverius.datagen",
+    "deliverius.db",
+    "deliverius.fraud",
+    "deliverius.llm",
+    "deliverius.observability",
+    "deliverius.orders",
+    "deliverius.policy",
+    "deliverius.privacy",
+    "deliverius.retrieval",
+    "deliverius.shared",
+]
+forbidden_modules = ["lightgbm", "sklearn", "pandas", "shap", "mlflow", "matplotlib", "yaml"]
 allow_indirect_imports = true
