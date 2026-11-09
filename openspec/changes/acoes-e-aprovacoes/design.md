@@ -44,15 +44,18 @@ então a tabela mínima nasce aqui.
 
 ```
 src/deliverius/
+├── shared/audit.py        + AuditSink (porta); db/audit.py + PostgresAuditSink; shared/access.py + is_visible
 ├── shared/ids.py          + ConversationId, ActionId, ApprovalRequestId, HandoffId, ReviewerId
 ├── shared/errors.py       ConflictError ganha um `code` estável (padrão: "conflict"), como o `rule` do InvariantError
 ├── policy/keys.py         proposal_key(conversation_id, order_id, action): a chave da proposta (pura)
 ├── orders/                + OrderLocker (porta) e métodos no PostgresOrderRepository:
-│                            lock_customer, lock_order (FOR UPDATE, com escopo), mark_cancelled
+│                            lock_customer (FOR NO KEY UPDATE), lock_order (FOR UPDATE, com escopo), mark_cancelled
 ├── actions/
 │   ├── models.py          ExecutionRequest, Automatic | ReviewerApproved, Executed | NotExecuted, ExecutedAction
-│   ├── ports.py           ActionStore (histórico, busca por chave, inserção, leitura por pedido)
-│   ├── repository.py      PostgresActionStore
+│   ├── ports.py           ActionStore (histórico, busca por chave, inserção, leitura por pedido),
+│   │                      ExecutionUnit (pedidos, ações e auditoria de uma transação) e UnitOfWork
+│   ├── repository.py      PostgresActionStore, PostgresExecutionUnit, postgres_unit_of_work
+│   ├── in_memory.py       InMemoryActionStore e InMemoryUnitOfWork, para os testes unitários
 │   └── service.py         ActionExecutor
 ├── approvals/
 │   ├── models.py          ApprovalRequest, ApprovalStatus, Decision, FraudAssessment, Handoff, HandoffSummary, Priority
@@ -87,13 +90,15 @@ pega a mesma proposta refeita pelo agente num turno novo. Com a chave derivada d
 `ActionExecutor.execute(scope: CustomerScope, request: ExecutionRequest) -> Executed | NotExecuted`, numa
 transação curta (`async with factory() as session, session.begin()`):
 
-1. `lock_customer(scope)`: `SELECT id FROM customers WHERE id = :c AND sandbox_id = :s FOR UPDATE`. A consulta lê só
-   o `id`, nenhum dado pessoal. Sem linha → `NotFoundError`.
+1. `lock_customer(scope)`: `SELECT id FROM customers WHERE id = :c AND sandbox_id = :s FOR NO KEY UPDATE`. A
+   consulta lê só o `id`, nenhum dado pessoal. O `NO KEY` serializa as execuções do mesmo jeito, mas não bloqueia
+   quem insere linhas que apontam para o cliente (pedido novo, conversa, mensagem) enquanto a transação dura. Sem linha → `NotFoundError`.
 2. `lock_order(scope, order_id)`: o pedido com itens e eventos, `FOR UPDATE OF orders`, com o escopo no `WHERE`.
    Sem linha → `NotFoundError`, a mesma resposta de "não existe".
 3. A chave é calculada e buscada. Se a ação já existe → `Executed(action, replayed=True)`, sem auditoria nova.
 4. O histórico é lido: ações do cliente com `executed_at >= claimed_at − 30 dias`, mais todas as ações do pedido. É
-   o contrato do `CustomerHistory`.
+   o contrato do `CustomerHistory`. São duas consultas ligadas por `UNION` (e não uma com `OR`), cada uma com o seu
+   índice: `(sandbox_id, customer_id, executed_at)` e `(order_id, executed_at)`.
 5. `policy.evaluate(proposta, pedido, histórico, claimed_at)`:
    - `Denied` → `NotExecuted(decision)` e o log `actions.reevaluation_denied`;
    - `NeedsApproval` com a autoridade `Automatic` → `NotExecuted(decision)` e o log `actions.needs_approval`;
@@ -131,7 +136,11 @@ um caso que ele já aprovou sabendo que passava do limite.
 indisponível. Por isso, o repositório captura antes o `IntegrityError` pelo nome da restrição:
 
 - a chave única (só se o código errar, porque a trava já serializa) → nova leitura e repetição;
-- a FK da aprovação → `ConflictError("action_approval_mismatch")`.
+- a FK da aprovação → `ConflictError("action_approval_mismatch")`;
+- a FK da conversa (a conversa não é do cliente ou não é desse pedido) → `ConflictError("action_conversation_mismatch")`.
+
+O nome da restrição vem de `db.errors.violated_constraint`. A inserção roda num `SAVEPOINT`, para que a linha
+recusada não aborte a transação de quem chama; outra restrição qualquer sobe como erro de banco indisponível.
 
 ### A aprovação garantida pelo banco, sem um módulo importar o outro
 
@@ -170,6 +179,9 @@ garante que ela continue assim.
 
 Restrições:
 
+- FKs: `(customer_id, sandbox_id)` para `customers`, `order_id` para `orders` e a composta `(conversation_id,
+  customer_id, order_id)` para `conversations`: a aprovação só aponta para uma conversa do mesmo cliente e do mesmo
+  pedido;
 - `UNIQUE (conversation_id, proposal_key)`: a criação idempotente;
 - índice único parcial `(conversation_id) WHERE status = 'pending'`: uma pendente por conversa;
 - `UNIQUE (id, conversation_id, proposal_key, status)`: o alvo da FK das ações;
@@ -236,6 +248,8 @@ tudo e o teste só garante o escopo.
 Restrições e índices:
 
 - índice único parcial `(conversation_id) WHERE status = 'open'`;
+- FK composta `(customer_id, sandbox_id)` para `customers` e FK composta `(conversation_id, customer_id)` para
+  `conversations (id, customer_id)`: a transferência só aponta para uma conversa do mesmo cliente;
 - fila: `(sandbox_id, priority_rank DESC, created_at, id) WHERE status = 'open'`, com `priority_rank` como coluna
   gerada (2 para `high`, 1 para `normal`), para o cursor ordenar sem `CASE`;
 - `customer_id` com índice.
@@ -285,6 +299,7 @@ Restrições e índices:
 - FK `order_id` para `orders`;
 - `UNIQUE (id, customer_id, order_id)`, que é o alvo da FK composta de `actions`. Assim, uma ação só aponta para
   uma conversa do mesmo cliente e do mesmo pedido;
+- `UNIQUE (id, customer_id)`, que é o alvo da FK composta de `handoffs` (a transferência não tem pedido);
 - índices em `(sandbox_id, customer_id, created_at)` e em `order_id`.
 
 Esta change só muda o `status`. Criar a conversa, a lease e as mensagens são da change 13; os testes criam as
@@ -325,7 +340,7 @@ trava, provada por um teste de propriedade (Hypothesis, com o repositório em me
 
 | Módulo | Eventos de log |
 | --- | --- |
-| `actions` | `executed` (tipo, valor, `approved_by`), `replayed`, `reevaluation_denied` (motivo), `needs_approval` (motivos), `lock_conflict`, `approval_mismatch` |
+| `actions` | `executed` (tipo, valor, `approved_by`), `replayed`, `reevaluation_denied` (motivo), `needs_approval` (motivos), `lock_conflict`, `approval_mismatch`, `conversation_mismatch` |
 | `approvals` | `requested`, `request_replayed`, `pending_conflict`, `decided`, `decision_replayed`, `decision_conflict`, `version_stale`, `handoff_created`, `handoff_replayed`, `handoff_assigned`, `handoff_assign_conflict`, `handoff_rejected_personal_data` |
 
 Os logs levam só IDs, códigos e valores; nunca o motivo do revisor nem o texto do resumo. `reevaluation_denied`,
@@ -333,8 +348,8 @@ Os logs levam só IDs, códigos e valores; nunca o motivo do revisor nem o texto
 
 Auditoria:
 
-- `actions.executed`: ator `agent`; nos dados, tipo, motivo, valor, `approved_by`, `approval_request_id` e os
-  motivos da reavaliação, quando houver;
+- `actions.executed`: ator `agent`; nos dados, tipo, motivo, valor, `approved_by`, `approval_request_id` e
+  `reviewer_id` (só na ação do revisor) e os motivos da reavaliação, quando houver;
 - `approvals.requested`: ator `agent`;
 - `approvals.decided`: ator `reviewer`, com o `reviewer_id`;
 - `approvals.handoff_created`: ator `agent`;
