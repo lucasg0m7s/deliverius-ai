@@ -21,7 +21,8 @@ DOMAIN_TABLES = {
 }
 LLM_TABLES = {"llm_calls", "llm_budget_usage"}
 POLICY_SEARCH_TABLES = {"policy_chunks"}
-ALL_TABLES = DOMAIN_TABLES | LLM_TABLES | POLICY_SEARCH_TABLES
+ACTION_TABLES = {"conversations", "approval_requests", "handoffs", "actions"}
+ALL_TABLES = DOMAIN_TABLES | LLM_TABLES | POLICY_SEARCH_TABLES | ACTION_TABLES
 
 
 @pytest.fixture
@@ -100,10 +101,43 @@ def test_policy_search_migration_downgrade_removes_only_its_objects(
     command.upgrade(config, "head")
     assert asyncio.run(search_objects(fresh_database_url)) == (True, True)
 
-    command.downgrade(config, "-1")
+    command.downgrade(config, "0003")
 
     assert asyncio.run(public_tables(fresh_database_url)) == DOMAIN_TABLES | LLM_TABLES
     assert asyncio.run(search_objects(fresh_database_url)) == (False, False)
 
     command.upgrade(config, "head")
     assert asyncio.run(search_objects(fresh_database_url)) == (True, True)
+
+
+async def public_functions(database_url: str) -> set[str]:
+    dsn = make_url(database_url).set(drivername="postgresql").render_as_string(hide_password=False)
+    connection = await asyncpg.connect(dsn)
+    try:
+        rows = await connection.fetch(
+            "SELECT proname FROM pg_proc WHERE pronamespace = 'public'::regnamespace"
+        )
+    finally:
+        await connection.close()
+    return {row["proname"] for row in rows}
+
+
+def test_actions_migration_downgrade_removes_only_its_objects(fresh_database_url: str) -> None:
+    config = migration_config(fresh_database_url)
+    command.upgrade(config, "head")
+    assert "approval_requests_reject_decided_change" in asyncio.run(
+        public_functions(fresh_database_url)
+    )
+
+    command.downgrade(config, "0004")
+
+    assert asyncio.run(public_tables(fresh_database_url)) == (
+        DOMAIN_TABLES | LLM_TABLES | POLICY_SEARCH_TABLES
+    )
+    assert "approval_requests_reject_decided_change" not in asyncio.run(
+        public_functions(fresh_database_url)
+    )
+    assert "audit_log_reject_change" in asyncio.run(public_functions(fresh_database_url))
+
+    command.upgrade(config, "head")
+    assert asyncio.run(public_tables(fresh_database_url)) == ALL_TABLES

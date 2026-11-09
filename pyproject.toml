@@ -172,6 +172,8 @@ forbidden_modules = [
     "deliverius.privacy",
     "deliverius.llm",
     "deliverius.retrieval",
+    "deliverius.actions",
+    "deliverius.approvals",
     "deliverius.api",
 ]
 
@@ -179,7 +181,9 @@ forbidden_modules = [
 name = "the application never imports the development tools (datagen, cli)"
 type = "forbidden"
 source_modules = [
+    "deliverius.actions",
     "deliverius.api",
+    "deliverius.approvals",
     "deliverius.config",
     "deliverius.db",
     "deliverius.llm",
@@ -198,7 +202,7 @@ type = "layers"
 layers = [
     "deliverius.cli",
     "deliverius.api | deliverius.datagen",
-    "deliverius.llm | deliverius.retrieval",
+    "deliverius.llm | deliverius.retrieval | deliverius.actions | deliverius.approvals",
     "deliverius.policy | deliverius.privacy",
     "deliverius.orders",
 ]
@@ -208,7 +212,9 @@ name = "provider integrations live only in llm"
 type = "forbidden"
 # Every module except llm. A new top-level module must be added here when it is created.
 source_modules = [
+    "deliverius.actions",
     "deliverius.api",
+    "deliverius.approvals",
     "deliverius.cli",
     "deliverius.config",
     "deliverius.datagen",
@@ -236,7 +242,9 @@ allow_indirect_imports = true
 name = "langchain_core lives only in llm"
 type = "forbidden"
 source_modules = [
+    "deliverius.actions",
     "deliverius.api",
+    "deliverius.approvals",
     "deliverius.cli",
     "deliverius.config",
     "deliverius.datagen",
@@ -256,7 +264,9 @@ name = "onnxruntime and tokenizers live only in retrieval"
 type = "forbidden"
 # Every module except retrieval. A new top-level module must be added here when it is created.
 source_modules = [
+    "deliverius.actions",
     "deliverius.api",
+    "deliverius.approvals",
     "deliverius.cli",
     "deliverius.config",
     "deliverius.datagen",

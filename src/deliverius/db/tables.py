@@ -15,6 +15,7 @@ from sqlalchemy import (
     Computed,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -48,6 +49,22 @@ EVENT_ACTORS = ("customer", "restaurant", "courier", "system")
 AUDIT_ACTOR_TYPES = tuple(actor.value for actor in AuditActorType)
 AUDIT_ACTION_REGEX = r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$"
 LLM_CALL_STATUSES = ("ok", "error")
+# Mirrored by the StrEnums in `policy.models` and `approvals.models`; a test keeps them equal.
+ACTION_KINDS = ("refund", "coupon", "cancellation")
+CLAIM_REASONS = (
+    "item_missing",
+    "wrong_item",
+    "quality_issue",
+    "late_delivery",
+    "not_delivered",
+    "duplicate_charge",
+    "customer_cancellation",
+)
+APPROVED_BY = ("automatic", "reviewer")
+CONVERSATION_STATUSES = ("open", "awaiting_approval", "transferred", "closed")
+APPROVAL_STATUSES = ("pending", "approved", "rejected")
+HANDOFF_STATUSES = ("open", "assigned")
+HANDOFF_PRIORITIES = ("normal", "high")
 
 NAMING_CONVENTION = {
     "ix": "ix_%(table_name)s_%(column_0_N_name)s",
@@ -298,3 +315,240 @@ class PolicyChunkRow(Base):
         TSVECTOR, Computed("to_tsvector('pt_unaccent', content)", persisted=True)
     )
     indexed_at: Mapped[datetime]
+
+
+class ConversationRow(Base):
+    """The minimum other tables point at: the conversation module adds the rest later."""
+
+    __tablename__ = "conversations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["customer_id", "sandbox_id"],
+            ["customers.id", "customers.sandbox_id"],
+            name="fk_conversations_customer_same_sandbox",
+        ),
+        ForeignKeyConstraint(["order_id"], ["orders.id"], name="fk_conversations_order_id_orders"),
+        # Target of the composite FKs: an action or approval only points at a conversation of the
+        # same customer and the same order.
+        UniqueConstraint("id", "customer_id", "order_id"),
+        # Target of the composite FK from handoffs, which have no order.
+        UniqueConstraint("id", "customer_id"),
+        CheckConstraint(one_of("status", CONVERSATION_STATUSES), name="status_known"),
+        Index(
+            "ix_conversations_sandbox_id_customer_id_created_at",
+            "sandbox_id",
+            "customer_id",
+            "created_at",
+        ),
+        Index("ix_conversations_order_id", "order_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    sandbox_id: Mapped[UUID]
+    customer_id: Mapped[UUID]
+    order_id: Mapped[UUID | None]
+    status: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class ApprovalRequestRow(Base):
+    """A proposal waiting for a person. A trigger in migration 0005 freezes it once decided."""
+
+    __tablename__ = "approval_requests"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["customer_id", "sandbox_id"],
+            ["customers.id", "customers.sandbox_id"],
+            name="fk_approval_requests_customer_same_sandbox",
+        ),
+        ForeignKeyConstraint(
+            ["order_id"], ["orders.id"], name="fk_approval_requests_order_id_orders"
+        ),
+        ForeignKeyConstraint(
+            ["conversation_id", "customer_id", "order_id"],
+            ["conversations.id", "conversations.customer_id", "conversations.order_id"],
+            name="fk_approval_requests_conversation_matches_customer_order",
+        ),
+        UniqueConstraint("conversation_id", "proposal_key"),
+        # Target of the composite FK from actions: only an approved request of the same
+        # conversation and proposal can authorize an action.
+        UniqueConstraint("id", "conversation_id", "proposal_key", "status"),
+        CheckConstraint(one_of("status", APPROVAL_STATUSES), name="status_known"),
+        CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint("policy_ceiling_cents >= 0", name="ceiling_not_negative"),
+        CheckConstraint("fraud_score BETWEEN 0 AND 1", name="fraud_score_in_range"),
+        CheckConstraint(
+            "char_length(decision_reason) BETWEEN 1 AND 500", name="decision_reason_length"
+        ),
+        CheckConstraint(
+            "(status = 'pending' AND decided_by IS NULL AND decided_at IS NULL "
+            "AND decision_reason IS NULL) "
+            "OR (status <> 'pending' AND decided_by IS NOT NULL AND decided_at IS NOT NULL "
+            "AND decision_reason IS NOT NULL)",
+            name="decision_complete",
+        ),
+        Index(
+            "uq_approval_requests_pending_conversation",
+            "conversation_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index(
+            "ix_approval_requests_pending_queue",
+            "sandbox_id",
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index("ix_approval_requests_customer_id", "customer_id"),
+        Index("ix_approval_requests_order_id", "order_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    sandbox_id: Mapped[UUID]
+    customer_id: Mapped[UUID]
+    conversation_id: Mapped[UUID]
+    order_id: Mapped[UUID]
+    proposal_key: Mapped[str] = mapped_column(Text)
+    proposal: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    claimed_at: Mapped[datetime]
+    policy_reasons: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    policy_ceiling_cents: Mapped[int] = mapped_column(Integer)
+    policy_document: Mapped[str] = mapped_column(Text)
+    fraud_score: Mapped[float | None] = mapped_column(Float)
+    fraud_model_version: Mapped[str | None] = mapped_column(Text)
+    fraud_factors: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, server_default="1")
+    decided_by: Mapped[UUID | None]
+    decided_at: Mapped[datetime | None]
+    # Free text from the reviewer: stored as received, never in a log or in the audit data.
+    decision_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class HandoffRow(Base):
+    __tablename__ = "handoffs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["customer_id", "sandbox_id"],
+            ["customers.id", "customers.sandbox_id"],
+            name="fk_handoffs_customer_same_sandbox",
+        ),
+        ForeignKeyConstraint(
+            ["conversation_id", "customer_id"],
+            ["conversations.id", "conversations.customer_id"],
+            name="fk_handoffs_conversation_matches_customer",
+        ),
+        CheckConstraint(one_of("priority", HANDOFF_PRIORITIES), name="priority_known"),
+        CheckConstraint(one_of("status", HANDOFF_STATUSES), name="status_known"),
+        CheckConstraint(
+            "(status = 'open' AND assigned_to IS NULL AND assigned_at IS NULL) "
+            "OR (status = 'assigned' AND assigned_to IS NOT NULL AND assigned_at IS NOT NULL)",
+            name="assignment_complete",
+        ),
+        Index(
+            "uq_handoffs_open_conversation",
+            "conversation_id",
+            unique=True,
+            postgresql_where=text("status = 'open'"),
+        ),
+        Index(
+            "ix_handoffs_open_queue",
+            "sandbox_id",
+            text("priority_rank DESC"),
+            "created_at",
+            "id",
+            postgresql_where=text("status = 'open'"),
+        ),
+        Index("ix_handoffs_customer_id", "customer_id"),
+        Index("ix_handoffs_conversation_id", "conversation_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    sandbox_id: Mapped[UUID]
+    customer_id: Mapped[UUID]
+    conversation_id: Mapped[UUID]
+    priority: Mapped[str] = mapped_column(Text)
+    # Structured summary (intent, facts, actions taken), already checked for personal data.
+    summary: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(Text)
+    assigned_to: Mapped[UUID | None]
+    assigned_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    priority_rank: Mapped[int] = mapped_column(
+        SmallInteger, Computed("CASE WHEN priority = 'high' THEN 2 ELSE 1 END", persisted=True)
+    )
+
+
+class ActionRow(Base):
+    """An executed action. The only writer is the action executor, after the policy re-check."""
+
+    __tablename__ = "actions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["customer_id", "sandbox_id"],
+            ["customers.id", "customers.sandbox_id"],
+            name="fk_actions_customer_same_sandbox",
+        ),
+        ForeignKeyConstraint(["order_id"], ["orders.id"], name="fk_actions_order_id_orders"),
+        ForeignKeyConstraint(
+            ["conversation_id", "customer_id", "order_id"],
+            ["conversations.id", "conversations.customer_id", "conversations.order_id"],
+            name="fk_actions_conversation_matches_customer_order",
+        ),
+        # An action approved by a reviewer points at an approval that is approved, of the same
+        # conversation and of the same proposal (the approval's key is the action's key).
+        ForeignKeyConstraint(
+            ["approval_request_id", "conversation_id", "idempotency_key", "approval_status"],
+            [
+                "approval_requests.id",
+                "approval_requests.conversation_id",
+                "approval_requests.proposal_key",
+                "approval_requests.status",
+            ],
+            name="fk_actions_approval_matches_request",
+        ),
+        UniqueConstraint("idempotency_key"),
+        CheckConstraint(one_of("kind", ACTION_KINDS), name="kind_known"),
+        CheckConstraint(one_of("reason", CLAIM_REASONS), name="reason_known"),
+        CheckConstraint(one_of("approved_by", APPROVED_BY), name="approved_by_known"),
+        CheckConstraint("amount_cents > 0", name="amount_positive"),
+        CheckConstraint("jsonb_typeof(items) = 'array'", name="items_is_array"),
+        CheckConstraint(
+            "approval_status IS NULL OR approval_status = 'approved'", name="approval_is_approved"
+        ),
+        CheckConstraint(
+            "(approved_by = 'reviewer') = (approval_request_id IS NOT NULL)",
+            name="reviewer_has_approval",
+        ),
+        CheckConstraint(
+            "(approval_request_id IS NULL) = (approval_status IS NULL)",
+            name="approval_columns_together",
+        ),
+        Index(
+            "ix_actions_sandbox_id_customer_id_executed_at",
+            "sandbox_id",
+            "customer_id",
+            "executed_at",
+        ),
+        Index("ix_actions_order_id_executed_at", "order_id", "executed_at"),
+        Index("ix_actions_conversation_id", "conversation_id"),
+        Index("ix_actions_approval_request_id", "approval_request_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    sandbox_id: Mapped[UUID]
+    customer_id: Mapped[UUID]
+    order_id: Mapped[UUID]
+    conversation_id: Mapped[UUID]
+    kind: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str] = mapped_column(Text)
+    amount_cents: Mapped[int] = mapped_column(Integer)
+    items: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    idempotency_key: Mapped[str] = mapped_column(Text)
+    approved_by: Mapped[str] = mapped_column(Text)
+    approval_request_id: Mapped[UUID | None]
+    approval_status: Mapped[str | None] = mapped_column(Text)
+    claimed_at: Mapped[datetime]
+    executed_at: Mapped[datetime]
