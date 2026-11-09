@@ -214,8 +214,25 @@ def test_retrieval_defaults() -> None:
     settings = build_settings()
 
     assert settings.retrieval_model_dir == Path("models/multilingual-e5-small")
-    assert settings.retrieval_min_similarity == 0.80
+    assert settings.retrieval_min_similarity == 0.85
     assert settings.retrieval_threads == 1
+    assert settings.retrieval_reliability_rule == "similarity_only"
+
+
+@pytest.mark.parametrize("rule", ["similarity_only", "both_lists_and_similarity"])
+def test_the_reliability_rule_accepts_both_forms(
+    monkeypatch: pytest.MonkeyPatch, rule: str
+) -> None:
+    monkeypatch.setenv("RETRIEVAL_RELIABILITY_RULE", rule)
+
+    assert build_settings().retrieval_reliability_rule == rule
+
+
+def test_an_unknown_reliability_rule_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RETRIEVAL_RELIABILITY_RULE", "always")
+
+    with pytest.raises(ValidationError, match="retrieval_reliability_rule"):
+        build_settings()
 
 
 def test_retrieval_settings_come_from_the_environment(

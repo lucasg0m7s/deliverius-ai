@@ -10,6 +10,8 @@ from deliverius.shared.model_ref import LlmProvider, ModelRef
 
 type LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 type LogFormat = Literal["json", "console"]
+# The values of `retrieval.ReliabilityRule`; a test keeps the two equal.
+type ReliabilityRuleSetting = Literal["both_lists_and_similarity", "similarity_only"]
 
 
 def _split_providers(value: object) -> object:
@@ -65,7 +67,9 @@ class Settings(BaseSettings):
 
     retrieval_model_dir: Path = Path("models/multilingual-e5-small")
     # Provisional until the evaluation of the search fixes the measured value.
-    retrieval_min_similarity: float = Field(default=0.80, ge=0, le=1)
+    retrieval_min_similarity: float = Field(default=0.85, ge=0, le=1)
+    # Provisional until the evaluation of the search fixes the measured rule.
+    retrieval_reliability_rule: ReliabilityRuleSetting = "similarity_only"
     retrieval_threads: int = Field(default=1, ge=1)
 
     log_level: LogLevel = "INFO"
