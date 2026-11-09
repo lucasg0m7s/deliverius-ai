@@ -26,6 +26,13 @@ Resultado da change `gerador-dados`. O desenho está em `modelo-dominio.md`, se�
   10: quando o modelo inclui um marcador a mais, costuma fazer isso nas dez variações do cenário, que é então
   repetido na tentativa seguinte. Nenhum cenário falhou nas três tentativas.
 
+## Teste de outro gerador
+
+550 mensagens escritas pelo Groq (`gpt-oss-120b`), com prompt próprio e cenários disjuntos dos do conjunto principal:
+nenhum descarte, 170 com dado pessoal (31%: telefone 60, nome 60, CPF 40, endereço 40, e-mail 30), 30 com ataque de
+prompt injection (5,5%). São mais curtas que as do Gemini (mediana de 153 caracteres contra 212; p95 de 311 contra 396),
+uma diferença de estilo que é justamente o que esse conjunto existe para medir.
+
 ## Revisão à mão
 
 100 mensagens sorteadas do conjunto principal (9 ou 10 por intenção, semente 2026), lidas uma a uma, contando as que
@@ -58,6 +65,7 @@ teste de outro gerador mede quanto o modelo decorou o estilo do Gemini.
   teste de hash dourado fixa a saída de um mundo pequeno.
 - As mensagens dependem do arquivo de cache de respostas e do registro de tentativas no mesmo arquivo. Repetir a
   geração com o mesmo cache não faz chamada real e produz arquivos idênticos byte a byte, inclusive o manifesto.
+  Conferido em 2026-11-09: a segunda execução completa fez zero chamadas e os 13 arquivos saíram idênticos.
 - Quatro defeitos apareceram só na geração real e foram corrigidos com teste de regressão: a tentativa que falhava
   não ia para o cache (a repetição mudava o texto); uma pausa curta do Groq, pelo limite de 8.000 tokens por minuto,
   encerrava a geração; a resposta estruturada do cliente compatível com a OpenAI não era relida do cache; e, com
@@ -65,5 +73,5 @@ teste de outro gerador mede quanto o modelo decorou o estilo do Gemini.
 
 ## Custo
 
-A geração completa usou cerca de 350 chamadas ao Gemini (cerca de 370 mil tokens) e 55 ao Groq, dentro da cota
-gratuita de um dia de cada provedor.
+A geração completa usou cerca de 350 chamadas ao Gemini (cerca de 370 mil tokens) e 56 ao Groq (cerca de 62 mil
+tokens), dentro da cota gratuita de um dia de cada provedor.
