@@ -26,6 +26,9 @@ jobs:
         run: uv run pytest tests/unit/policy --cov-reset --cov=deliverius.policy --cov-fail-under=100
       - name: Masking needs 100% branch coverage
         run: uv run pytest tests/unit/privacy --cov-reset --cov=deliverius.privacy --cov-fail-under=100
+      # The Postgres repository is only exercised by the integration tests, so they count here too.
+      - name: Actions need 100% branch coverage (unit tests plus their Postgres tests)
+        run: uv run pytest tests/unit/actions tests/integration/test_actions_*.py -m "not llm" --cov-reset --cov=deliverius.actions --cov-fail-under=100
       - uses: actions/cache@v4
         with:
           path: models/multilingual-e5-small
