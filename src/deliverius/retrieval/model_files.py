@@ -15,7 +15,7 @@ from typing import Final
 import structlog
 from huggingface_hub import hf_hub_download
 
-from deliverius.shared.errors import DeliveriusError
+from deliverius.shared.errors import DeliveriusError, ExternalServiceError
 
 logger = structlog.get_logger(__name__)
 
@@ -62,13 +62,18 @@ class ModelFileError(DeliveriusError):
         self.file = file
 
 
+class ModelDownloadError(ExternalServiceError):
+    """The hub did not deliver `file` (network down, timeout, refused): run the command again."""
+
+    def __init__(self, file: str) -> None:
+        super().__init__(f"model_download.failed: {file}")
+        self.file = file
+
+
 def verify_model_files(model_dir: Path, expected: Iterable[ModelFile] = MODEL_FILES) -> None:
     """Raise `ModelFileError` for the first file that is absent, of another size or another hash."""
     for file in expected:
-        rule = _mismatch(model_dir, file)
-        if rule is not None:
-            logger.warning("retrieval.model_rejected", file=file.name, rule=rule)
-            raise ModelFileError(rule, file.name)
+        _require_match(model_dir, file)
     logger.info("retrieval.model_verified", model_dir=str(model_dir))
 
 
@@ -77,10 +82,10 @@ def fetch_model(
     expected: Iterable[ModelFile] = MODEL_FILES,
     download: Downloader | None = None,
 ) -> tuple[str, ...]:
-    """Download the files that are missing or wrong, then verify all; returns what was downloaded.
+    """Download the files that are missing or wrong, verifying each; returns what was downloaded.
 
-    A file that already matches is not downloaded again. A partial or altered file is removed first,
-    so it can never be mistaken for a finished download.
+    A file that already matches is not downloaded again, nor hashed a second time. A partial or
+    altered file is removed first, so it can never be mistaken for a finished download.
     """
     files = tuple(expected)
     download = download or _download_from_hub
@@ -91,12 +96,25 @@ def fetch_model(
         (model_dir / file.name).unlink(missing_ok=True)
         download(file, model_dir)
         downloaded.append(file.name)
-    verify_model_files(model_dir, files)
+        _require_match(model_dir, file)
+    logger.info("retrieval.model_verified", model_dir=str(model_dir))
     return tuple(downloaded)
 
 
 def _download_from_hub(file: ModelFile, model_dir: Path) -> None:
-    hf_hub_download(MODEL_REPOSITORY, file.name, revision=MODEL_REVISION, local_dir=model_dir)
+    try:
+        hf_hub_download(MODEL_REPOSITORY, file.name, revision=MODEL_REVISION, local_dir=model_dir)
+    except Exception as error:
+        # The hub client has its own HTTP error hierarchy, not all of it an `OSError`.
+        logger.warning("retrieval.model_download_failed", file=file.name)
+        raise ModelDownloadError(file.name) from error
+
+
+def _require_match(model_dir: Path, file: ModelFile) -> None:
+    rule = _mismatch(model_dir, file)
+    if rule is not None:
+        logger.warning("retrieval.model_rejected", file=file.name, rule=rule)
+        raise ModelFileError(rule, file.name)
 
 
 def _mismatch(model_dir: Path, file: ModelFile) -> str | None:

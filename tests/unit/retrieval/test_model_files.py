@@ -7,11 +7,13 @@ from structlog.testing import capture_logs
 from deliverius.retrieval import MODEL_FILES, MODEL_REVISION
 from deliverius.retrieval.model_files import (
     MODEL_REPOSITORY,
+    ModelDownloadError,
     ModelFile,
     ModelFileError,
     fetch_model,
     verify_model_files,
 )
+from deliverius.shared.errors import ExternalServiceError
 
 CONTENT = {
     "onnx/model.onnx": b"pretend this is a network" * 100,
@@ -180,3 +182,22 @@ def test_the_default_downloader_asks_the_hub_for_the_pinned_revision(
             {"revision": MODEL_REVISION, "local_dir": tmp_path},
         )
     ]
+
+
+@pytest.mark.parametrize(
+    "failure", [ConnectionError("offline"), TimeoutError(), RuntimeError("503")]
+)
+def test_a_hub_failure_becomes_a_download_error_naming_the_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: Exception
+) -> None:
+    def failing_hub_download(*args: str, **kwargs: object) -> str:
+        raise failure
+
+    monkeypatch.setattr("deliverius.retrieval.model_files.hf_hub_download", failing_hub_download)
+
+    with pytest.raises(ModelDownloadError) as error:
+        fetch_model(tmp_path, (EXPECTED[2],))
+
+    assert error.value.file == "onnx/config.json"
+    assert isinstance(error.value, ExternalServiceError)
+    assert error.value.__cause__ is failure
