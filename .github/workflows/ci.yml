@@ -45,7 +45,7 @@ jobs:
         with:
           path: models/fraud
           # `fraud.model_files.REVISION`, first eight characters; a test keeps the two equal.
-          key: fraud-model-00000000
+          key: fraud-model-ff70b350
       - uses: actions/cache@v4
         with:
           path: data/generated/v1.0.0

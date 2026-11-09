@@ -56,7 +56,7 @@ imagem; a exceção do `.predict(` (5.3) não é necessária, e a regra do teste
 ## 7. Publicação e porta do CI
 
 - [x] 7.1 `research/fraud/publish.py`: monta `model.txt` (ou `logistic.json`), `calibrator.json`, `decision.json`, `manifest.json` e o card em inglês numa pasta temporária; ensaio por padrão mostra arquivos, hashes e destino; `--confirm` cria o repositório `G0m7s/deliverius-fraud`, envia e cria a tag; recusa tag existente; testes com o hub falso (ensaio não envia, tag existente recusa, queda entre envio e tag é retomada)
-- [ ] 7.2 **Com a autorização do autor:** publicar `v1.0.0`; fixar `REVISION` e o `MANIFEST` em `fraud/model_files.py`; `fraud fetch-model` baixa e `load_fraud_model` aceita
+- [x] 7.2 **Com a autorização do autor:** publicar `v1.0.0`; fixar `REVISION` e o `MANIFEST` em `fraud/model_files.py`; `fraud fetch-model` baixa e `load_fraud_model` aceita
 - [x] 7.3 `research/fraud/gate.py`: baixa o dataset (commit da tag `v1.0.0`, manifesto fixado) e o modelo, pontua outubro com o *scorer* da aplicação e falha abaixo do piso de PR-AUC ou acima do teto de Brier, mostrando valor e limite; teste com um modelo ruim de propósito → falha
 - [x] 7.4 `ci.yml`: `uv sync --locked --group research`, cache de `models/fraud` e de `data/generated/v1.0.0` com as chaves das constantes, `fraud fetch-model`, `python -m research.fraud.gate`; teste que mantém as chaves de cache iguais às constantes (como `test_ci_model_cache.py`)
 
@@ -76,5 +76,5 @@ imagem; a exceção do `.predict(` (5.3) não é necessária, e a regra do teste
 - [x] 9.4 `uv run lint-imports`
 - [x] 9.5 `uv run pytest` (cobertura mínima de 85% e 100% dos ramos em `policy`, `privacy`, `actions` e `fraud.features`)
 - [x] 9.6 `uv run pytest -m integration --no-cov`
-- [ ] 9.7 `uv run python -m research.fraud.gate` passa com o modelo publicado
+- [x] 9.7 `uv run python -m research.fraud.gate` passa com o modelo publicado
 - [x] 9.8 `openspec validate antifraude-reembolso --strict`

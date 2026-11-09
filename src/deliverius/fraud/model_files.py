@@ -29,10 +29,12 @@ from deliverius.shared.money import Money
 logger = structlog.get_logger(__name__)
 
 MODEL_REPOSITORY: Final = "G0m7s/deliverius-fraud"
-# Commit of the `v1.0.0` tag on the Hub; set together with `MANIFEST` when the model is published.
-REVISION: Final = "0000000000000000000000000000000000000000"
+# Commit of the `v1.0.0` tag on the Hub; changed together with `MANIFEST`.
+REVISION: Final = "ff70b350a3654d7d71cbd0cad9bdef6e858f863a"
 REPOSITORY: Final = PinnedRepository(MODEL_REPOSITORY, REVISION)
-MANIFEST: Final = ModelFile("manifest.json", 1, "0" * 64)
+MANIFEST: Final = ModelFile(
+    "manifest.json", 1513, "4a372d55b48e468442691ad4ae1d475a5bc8a16d91da653ee8c120f6baeac7a8"
+)
 
 LOGISTIC_FILE: Final = "logistic.json"
 CALIBRATOR_FILE: Final = "calibrator.json"
