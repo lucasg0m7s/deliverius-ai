@@ -54,6 +54,16 @@ class AuditSink(Protocol):
     async def record(self, entry: AuditEntry) -> None: ...
 
 
+class InMemoryAuditSink:
+    """Keeps the entries in a list, for tests of code that audits."""
+
+    def __init__(self) -> None:
+        self.entries: list[AuditEntry] = []
+
+    async def record(self, entry: AuditEntry) -> None:
+        self.entries.append(entry)
+
+
 def _personal_data_path(value: JsonValue | Mapping[str, JsonValue], path: str) -> str | None:
     if isinstance(value, Mapping):
         for key, item in value.items():

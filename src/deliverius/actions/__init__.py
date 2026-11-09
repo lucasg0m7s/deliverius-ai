@@ -1,10 +1,6 @@
 """Actions: executes a refund, coupon or cancellation, idempotent and re-checked by the policy."""
 
-from deliverius.actions.in_memory import (
-    InMemoryActionStore,
-    InMemoryAuditSink,
-    InMemoryUnitOfWork,
-)
+from deliverius.actions.in_memory import InMemoryActionStore, InMemoryUnitOfWork
 from deliverius.actions.models import (
     Authority,
     Automatic,
@@ -30,7 +26,6 @@ __all__ = [
     "ExecutionResult",
     "ExecutionUnit",
     "InMemoryActionStore",
-    "InMemoryAuditSink",
     "InMemoryUnitOfWork",
     "NotExecuted",
     "PostgresActionStore",

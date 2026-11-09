@@ -4,7 +4,13 @@ Pure: no database, web framework, LLM or logging library.
 """
 
 from deliverius.shared.access import AccessScope, CustomerScope, SandboxScope, is_visible
-from deliverius.shared.audit import AuditActorType, AuditEntry, AuditSink, JsonValue
+from deliverius.shared.audit import (
+    AuditActorType,
+    AuditEntry,
+    AuditSink,
+    InMemoryAuditSink,
+    JsonValue,
+)
 from deliverius.shared.clock import Clock, FixedClock, SystemClock, require_aware
 from deliverius.shared.errors import (
     ConflictError,
@@ -49,6 +55,7 @@ __all__ = [
     "ExternalServiceError",
     "FixedClock",
     "HandoffId",
+    "InMemoryAuditSink",
     "InvalidInputError",
     "InvariantError",
     "JsonValue",

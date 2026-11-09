@@ -1,6 +1,5 @@
 from dataclasses import replace
 from datetime import datetime
-from typing import assert_never
 
 from deliverius.orders.cursor import Page, PageRequest, decode_cursor, page_from_rows
 from deliverius.orders.models import (
@@ -11,7 +10,7 @@ from deliverius.orders.models import (
     OrderSummary,
     can_transition,
 )
-from deliverius.shared.access import AccessScope, CustomerScope, SandboxScope
+from deliverius.shared.access import AccessScope, CustomerScope, is_visible
 from deliverius.shared.clock import require_aware
 from deliverius.shared.errors import InvariantError, NotFoundError
 from deliverius.shared.ids import CustomerId, DeliveryEventId, OrderId, new_id
@@ -72,13 +71,7 @@ class InMemoryOrderRepository:
 
 
 def _in_scope(scope: AccessScope, order: Order) -> bool:
-    match scope:
-        case CustomerScope(sandbox_id=sandbox_id, customer_id=customer_id):
-            return order.sandbox_id == sandbox_id and order.customer_id == customer_id
-        case SandboxScope(sandbox_id=sandbox_id):
-            return order.sandbox_id == sandbox_id
-        case _:
-            assert_never(scope)
+    return is_visible(scope, order.sandbox_id, order.customer_id)
 
 
 def _with_timeline_in_order(order: Order) -> Order:

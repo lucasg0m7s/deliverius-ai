@@ -7,7 +7,7 @@ from deliverius.actions.models import ExecutedAction
 from deliverius.orders import InMemoryOrderRepository, Order
 from deliverius.policy import CustomerHistory
 from deliverius.shared.access import AccessScope, CustomerScope, is_visible
-from deliverius.shared.audit import AuditEntry
+from deliverius.shared.audit import InMemoryAuditSink
 from deliverius.shared.ids import ActionId, OrderId
 
 
@@ -64,14 +64,6 @@ class InMemoryActionStore:
 
     def _ordered(self) -> Sequence[ExecutedAction]:
         return sorted(self._actions.values(), key=lambda action: (action.executed_at, action.id))
-
-
-class InMemoryAuditSink:
-    def __init__(self) -> None:
-        self.entries: list[AuditEntry] = []
-
-    async def record(self, entry: AuditEntry) -> None:
-        self.entries.append(entry)
 
 
 class InMemoryUnitOfWork:
