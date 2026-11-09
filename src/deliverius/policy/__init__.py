@@ -11,6 +11,7 @@ from deliverius.policy.documents import (
     render_policy_document,
 )
 from deliverius.policy.engine import evaluate
+from deliverius.policy.keys import proposal_key
 from deliverius.policy.limits import POLICY_LIMITS, PolicyLimits
 from deliverius.policy.models import (
     ActionKind,
@@ -51,5 +52,6 @@ __all__ = [
     "evaluate",
     "format_limit",
     "load_policy_documents",
+    "proposal_key",
     "render_policy_document",
 ]
