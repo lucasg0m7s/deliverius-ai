@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from deliverius.cli.datagen import say, use_utf8_output
+from deliverius.cli.console import say, use_utf8_output
 
 
 def test_the_text_goes_out_as_utf8_even_if_the_stream_was_opened_with_another_encoding(

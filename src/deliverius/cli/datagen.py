@@ -7,19 +7,24 @@ HTTP client of some providers is tied to the loop that first used it (`docs/robu
 
 import argparse
 import asyncio
-import io
-import logging
 import re
-import sys
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
-from typing import Final, NoReturn
+from typing import Final
 
 import structlog
 from pydantic import ValidationError
 
-from deliverius.cli import texts
+from deliverius.cli import retrieval, texts
+from deliverius.cli.console import (
+    EXIT_INVALID,
+    EXIT_OK,
+    Parser,
+    complain,
+    configure_cli_logging,
+    say,
+)
 from deliverius.cli.wiring import Wiring
 from deliverius.config import Settings
 from deliverius.datagen.config import DATAGEN_VERSION, DatagenConfig
@@ -49,12 +54,9 @@ from deliverius.llm.errors import LlmConfigurationError
 from deliverius.llm.ports import BudgetStatus
 from deliverius.llm.roles import ModelRole
 from deliverius.llm.runtime import LlmRuntime
-from deliverius.observability.logging import configure_logging
 
 logger = structlog.get_logger(__name__)
 
-EXIT_OK: Final = 0
-EXIT_INVALID: Final = 1
 EXIT_BUDGET_EXHAUSTED: Final = 2
 
 DEFAULT_SEED: Final = 42
@@ -73,29 +75,6 @@ _STEPS_OF: Final = {
     "all": ALL_STEPS,
 }
 _USES_LLM: Final = frozenset({"messages", "holdout", "rag-pairs", "all"})
-
-
-def use_utf8_output() -> None:
-    """The text is Portuguese: on Windows a pipe or file would otherwise get the ANSI code page."""
-    for stream in (sys.stdout, sys.stderr):
-        if isinstance(stream, io.TextIOWrapper):
-            stream.reconfigure(encoding="utf-8")
-
-
-def say(line: str = "") -> None:
-    sys.stdout.write(f"{line}\n")
-
-
-def complain(line: str) -> None:
-    sys.stderr.write(f"{line}\n")
-
-
-class _Parser(argparse.ArgumentParser):
-    """Exit code 2 is the budget's, so a usage error exits with 1."""
-
-    def error(self, message: str) -> NoReturn:
-        self.print_usage(sys.stderr)
-        self.exit(EXIT_INVALID, f"{self.prog}: erro: {message}\n")
 
 
 _NOT_POSITIVE: Final = "deve ser um inteiro maior que zero"
@@ -129,7 +108,7 @@ def default_output(subcommand: str) -> Path:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = _Parser(prog="python -m deliverius.cli")
+    parser = Parser(prog="python -m deliverius.cli")
     tools = parser.add_subparsers(dest="tool", required=True, metavar="ferramenta")
     datagen = tools.add_parser("datagen", help="dados sintéticos")
     commands = datagen.add_subparsers(dest="subcommand", required=True, metavar="subcomando")
@@ -154,6 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
     published.add_argument("--review-defect-rate", type=_rate, default=None, help="de 0 a 1")
     published.add_argument("--review-sample-size", type=_positive_int, default=None)
     published.set_defaults(run=_publish)
+    retrieval.register(tools)
     return parser
 
 
@@ -170,17 +150,9 @@ def main(argv: Sequence[str] | None = None, wiring: Wiring | None = None) -> int
         names = sorted({str(problem["loc"][0]).upper() for problem in error.errors()})
         complain(f"Configuração inválida: {', '.join(names)}.")
         return EXIT_INVALID
-    _configure_logging(settings)
+    configure_cli_logging(settings)
     code: int = args.run(args, wiring, settings)
     return code
-
-
-def _configure_logging(settings: Settings) -> None:
-    """Logs go to stderr, so stdout holds only what the operator is meant to read."""
-    configure_logging(settings)
-    for handler in logging.getLogger().handlers:
-        if isinstance(handler, logging.StreamHandler):
-            handler.setStream(sys.stderr)
 
 
 def _generate(args: argparse.Namespace, wiring: Wiring, settings: Settings) -> int:
