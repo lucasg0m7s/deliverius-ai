@@ -16,7 +16,7 @@ from typing import Final
 import structlog
 from pydantic import ValidationError
 
-from deliverius.cli import retrieval, texts
+from deliverius.cli import fraud, retrieval, texts
 from deliverius.cli.console import (
     EXIT_INVALID,
     EXIT_OK,
@@ -134,6 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
     published.add_argument("--review-sample-size", type=_positive_int, default=None)
     published.set_defaults(run=_publish)
     retrieval.register(tools)
+    fraud.register(tools)
     return parser
 
 

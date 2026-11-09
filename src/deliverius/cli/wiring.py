@@ -13,6 +13,7 @@ from deliverius.datagen.pipeline import CommitInfo
 from deliverius.datagen.publish import HubFactory, huggingface_hub_for
 from deliverius.db.engine import create_engine
 from deliverius.db.session import create_session_factory
+from deliverius.fraud import fetch_fraud_model
 from deliverius.llm.roles import ModelRole
 from deliverius.llm.runtime import LlmRuntime
 from deliverius.retrieval import (
@@ -102,5 +103,6 @@ class Wiring:
     hub: HubFactory = huggingface_hub_for
     retrieval: RetrievalFactory = database_retrieval
     fetch_model: ModelFetcher = fetch_model
+    fetch_fraud_model: ModelFetcher = fetch_fraud_model
     # The sizes and rates; the command line changes only the seed and the concurrency.
     base_config: DatagenConfig = field(default_factory=DatagenConfig)

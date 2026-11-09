@@ -219,6 +219,18 @@ def test_retrieval_defaults() -> None:
     assert settings.retrieval_reliability_rule == "similarity_only"
 
 
+def test_the_fraud_model_folder_defaults_to_models_fraud() -> None:
+    assert build_settings().fraud_model_dir == Path("models/fraud")
+
+
+def test_the_fraud_model_folder_comes_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("FRAUD_MODEL_DIR", str(tmp_path))
+
+    assert build_settings().fraud_model_dir == tmp_path
+
+
 @pytest.mark.parametrize("rule", ["similarity_only", "both_lists_and_similarity"])
 def test_the_reliability_rule_accepts_both_forms(
     monkeypatch: pytest.MonkeyPatch, rule: str

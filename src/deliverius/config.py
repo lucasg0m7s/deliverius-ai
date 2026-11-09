@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     retrieval_reliability_rule: ReliabilityRuleSetting = "similarity_only"
     retrieval_threads: int = Field(default=1, ge=1)
 
+    # Refund fraud model, downloaded by `python -m deliverius.cli fraud fetch-model`.
+    fraud_model_dir: Path = Path("models/fraud")
+
     log_level: LogLevel = "INFO"
     log_format: LogFormat = "json"
 
