@@ -272,8 +272,14 @@ mask_input ──► classify_intent ──► (roteamento)
   turno (tokens, custo, latência). As mensagens guardadas já estão mascaradas.
 - **O checkpointer é o `AsyncPostgresSaver`, no mesmo Postgres**, com durabilidade `sync`. É uma conversa que mexe
   com dinheiro, e o custo de gravar a cada passo é pequeno num grafo deste tamanho.
-- **O pedido de aprovação também vai para a tabela `approvals`.** O console consulta essa tabela, nunca os
+- **O pedido de aprovação também vai para a tabela `approval_requests`.** O console consulta essa tabela, nunca os
   checkpoints, que são detalhe interno do LangGraph.
+- **`approvals` e `actions` não se importam (mesma camada); o agente liga os dois.** O nó `execute_action` lê a
+  aprovação por `approvals` e passa a autoridade para `actions`: `Automatic()` quando a política permitiu, ou
+  `ReviewerApproved(approval_request_id, reviewer_id)` depois de uma aprovação. Ler e depois executar em duas
+  transações é seguro porque a aprovação decidida é imutável (trigger), e o banco ainda confere o par: a FK
+  composta da ação só aceita uma aprovação aprovada, da mesma conversa e da mesma proposta. O executor reavalia a
+  política com o `claimed_at` original guardado na aprovação; `Denied` nunca executa.
 - **Mensagem nova com aprovação pendente não retoma o grafo.** A API vê a pendência e responde "seu pedido está em
   análise, prazo X", sem executar nada.
 - **Retomada:** o console envia a decisão. A API confere quem decidiu, se o pedido ainda está pendente e se a
