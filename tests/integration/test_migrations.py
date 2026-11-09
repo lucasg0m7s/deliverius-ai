@@ -141,3 +141,32 @@ def test_actions_migration_downgrade_removes_only_its_objects(fresh_database_url
 
     command.upgrade(config, "head")
     assert asyncio.run(public_tables(fresh_database_url)) == ALL_TABLES
+
+
+async def public_indexes(database_url: str) -> set[str]:
+    dsn = make_url(database_url).set(drivername="postgresql").render_as_string(hide_password=False)
+    connection = await asyncpg.connect(dsn)
+    try:
+        rows = await connection.fetch(
+            "SELECT indexname FROM pg_indexes WHERE schemaname = 'public'"
+        )
+    finally:
+        await connection.close()
+    return {row["indexname"] for row in rows}
+
+
+def test_fraud_index_migration_round_trip(fresh_database_url: str) -> None:
+    config = migration_config(fresh_database_url)
+    index = "ix_approval_requests_sandbox_id_customer_id_claimed_at"
+    command.upgrade(config, "head")
+    assert index in asyncio.run(public_indexes(fresh_database_url))
+
+    command.downgrade(config, "0005")
+
+    remaining = asyncio.run(public_indexes(fresh_database_url))
+    assert index not in remaining
+    assert "ix_approval_requests_customer_id" in remaining
+    assert asyncio.run(public_tables(fresh_database_url)) == ALL_TABLES
+
+    command.upgrade(config, "head")
+    assert index in asyncio.run(public_indexes(fresh_database_url))

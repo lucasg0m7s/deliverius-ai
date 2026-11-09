@@ -400,7 +400,14 @@ class ApprovalRequestRow(Base):
             "id",
             postgresql_where=text("status = 'pending'"),
         ),
+        # Covers the foreign key to the customer; the fraud reader uses the next one.
         Index("ix_approval_requests_customer_id", "customer_id"),
+        Index(
+            "ix_approval_requests_sandbox_id_customer_id_claimed_at",
+            "sandbox_id",
+            "customer_id",
+            "claimed_at",
+        ),
         Index("ix_approval_requests_order_id", "order_id"),
     )
 
