@@ -16,23 +16,23 @@
 
 ## 4. Indexação
 
-- [ ] 4.1 `chunking.py`: trechos por seção a partir de `render_policy_document`, ID citável com slug, título no texto, hash do documento renderizado, título repetido recusado; testes, inclusive `POL-03#prazo`
-- [ ] 4.2 `repository.py` e `indexer.py`: hashes, troca dos trechos por documento numa transação com `pg_advisory_xact_lock` e `lock_timeout`, embeddings fora da transação, releitura dos hashes dentro da trava, remoção de documentos e seções que sumiram; testes unitários com repositório em memória: segunda execução sem embedding, limite alterado reindexa só os documentos que o citam
-- [ ] 4.3 Integração, corrida: duas indexações com `asyncio.gather` no banco vazio → cada trecho exatamente uma vez; e com um documento mudado entre as duas
+- [x] 4.1 `chunking.py`: trechos por seção a partir de `render_policy_document`, ID citável com slug, título no texto, hash do documento renderizado, título repetido recusado; testes, inclusive `POL-03#prazo`
+- [x] 4.2 `repository.py` e `indexer.py`: hashes, troca dos trechos por documento numa transação com `pg_advisory_xact_lock` e `lock_timeout`, embeddings fora da transação, releitura dos hashes dentro da trava, remoção de documentos e seções que sumiram; testes unitários com repositório em memória: segunda execução sem embedding, limite alterado reindexa só os documentos que o citam
+- [x] 4.3 Integração, corrida: duas indexações com `asyncio.gather` no banco vazio → cada trecho exatamente uma vez; e com um documento mudado entre as duas
 
 ## 5. Busca
 
-- [ ] 5.1 `search.py`: consulta normalizada, limite de 500 caracteres, modos lexical, semântico e híbrido, RRF k = 60 em SQL com desempate por `chunk_id`, `SearchResult` com IDs, texto, posições e similaridade; regra de confiança; testes unitários da regra e da validação
-- [ ] 5.2 Integração: palavra sem acento, operadores (`!`, `&`, `|`, `:*`, aspas) sem erro, resultado determinístico, pergunta da política com `POL-03#prazo` entre os 3, pergunta fora do escopo não confiável, `EXPLAIN` registrado
-- [ ] 5.3 Eventos de log de `design.md` e teste de que o texto da consulta não aparece nos logs
+- [x] 5.1 `search.py`: consulta normalizada, limite de 500 caracteres, modos lexical, semântico e híbrido, RRF k = 60 em SQL com desempate por `chunk_id`, `SearchResult` com IDs, texto, posições e similaridade; regra de confiança; testes unitários da regra e da validação
+- [x] 5.2 Integração: palavra sem acento, operadores (`!`, `&`, `|`, `:*`, aspas) sem erro, resultado determinístico, pergunta da política com `POL-03#prazo` entre os 3, pergunta fora do escopo não confiável, `EXPLAIN` registrado
+- [x] 5.3 Eventos de log de `design.md` e teste de que o texto da consulta não aparece nos logs
 
 ## 6. CLI e avaliação
 
-- [ ] 6.1 `cli/retrieval.py`: `fetch-model`, `index` e `evaluate`, com textos em português e códigos de saída como os do `datagen`; testes dos argumentos e códigos de saída
-- [ ] 6.2 `data/eval/policy_qa.jsonl` (os 60 pares da v1.0.0), `data/eval/out_of_scope.jsonl` (≈ 30 perguntas fora do escopo escritas à mão) e `data/eval/README.md` com a origem
-- [ ] 6.3 `evaluation.py`: recall@3, MRR, bootstrap de 1.000 com semente fixa, taxa de não confiável nos dois conjuntos, latência p50/p95 de 100 consultas; testes unitários das métricas com casos feitos à mão
+- [x] 6.1 `cli/retrieval.py`: `fetch-model`, `index` e `evaluate`, com textos em português e códigos de saída como os do `datagen`; testes dos argumentos e códigos de saída
+- [x] 6.2 `data/eval/policy_qa.jsonl` (os 60 pares da v1.0.0), `data/eval/out_of_scope.jsonl` (≈ 30 perguntas fora do escopo escritas à mão) e `data/eval/README.md` com a origem
+- [x] 6.3 `evaluation.py`: recall@3, MRR, bootstrap de 1.000 com semente fixa, taxa de não confiável nos dois conjuntos, latência p50/p95 de 100 consultas; testes unitários das métricas com casos feitos à mão
 - [ ] 6.4 Mini-pesquisa: rodar `evaluate`, escolher o limiar pela regra do design, fixar o padrão de `RETRIEVAL_MIN_SIMILARITY` e o piso da porta; relatório `docs/busca-politicas.md` com a tabela, o limiar, os erros comentados e os limites
-- [ ] 6.5 Porta no CI: teste de integração com o modelo real que exige recall@3 e MRR da híbrida acima do piso; `actions/cache` do modelo no job de qualidade com a chave da revisão e passo `fetch-model` antes dos testes de integração
+- [x] 6.5 Porta no CI: teste de integração com o modelo real que exige recall@3 e MRR da híbrida acima do piso; `actions/cache` do modelo no job de qualidade com a chave da revisão e passo `fetch-model` antes dos testes de integração
 
 ## 7. Documentação
 
