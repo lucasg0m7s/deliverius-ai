@@ -49,7 +49,7 @@ flowchart LR
 | Motor de política e mascaramento | 100% de cobertura de ramos, exigida no CI |
 | Recall do mascaramento | Acima de 99% nos tipos estruturados em dados sintéticos; nomes próprios ainda não reconhecidos (limite escrito) |
 | Custo de LLM | Chamada real com ferramenta: US$ 0,000079 no Gemini e US$ 0,000048 no Groq (preço de lista equivalente; o projeto roda na cota gratuita), latência de 0,7 s e 0,3 a 0,5 s |
-| Dataset sintético | 2.969 mensagens rotuladas em 11 intenções, 550 de teste de outro gerador, 20.000 pedidos com 3.378 reclamações rotuladas para o antifraude (11,8% de fraude), 60 pares pergunta → política, 150 cenários de ponta a ponta |
+| Dataset sintético | 2.969 mensagens rotuladas em 11 intenções, 550 de teste de outro gerador, 20.000 pedidos com 3.378 reclamações rotuladas para o antifraude (11,8% de fraude), 60 pares pergunta → política, 150 cenários de ponta a ponta; 5% de rótulo errado numa revisão à mão de 100 mensagens. Publicado em [huggingface.co/datasets/G0m7s/deliverius-ai](https://huggingface.co/datasets/G0m7s/deliverius-ai) (tag `v1.0.0`, CC BY 4.0) |
 
 ## Busca nas políticas: por que híbrida?
 
@@ -79,7 +79,7 @@ O plano completo, change por change, está em [`docs/roadmap.md`](docs/roadmap.m
 | 3 | `motor-politica` | Motor de política puro e 12 documentos com números de fonte única | ✅ |
 | 4 | `mascaramento-dados` | Detecção e mascaramento de dados pessoais com marcadores estáveis | ✅ |
 | 5 | `camada-llm` | Papéis, provedores, orçamento, registro de uso e custo, cache, modelo falso | ✅ |
-| 6 | `gerador-dados` | Dados sintéticos rotulados por construção, CLI, publicação no Hugging Face | 🔄 |
+| 6 | `gerador-dados` | Dados sintéticos rotulados por construção, CLI, publicação no Hugging Face | ✅ |
 | 8 | `busca-politicas` | Busca híbrida nas políticas com avaliação e porta no CI | ✅ |
 | 7, 9, 10 | Modelos | Pesquisa de intenção (4 abordagens), classificador servido, antifraude | ⏳ |
 | 11–14 | Agente e API | Ações e aprovações, agente LangGraph, API, observabilidade | ⏳ |
@@ -100,7 +100,16 @@ uv run fastapi dev src/deliverius/api/main.py   # http://localhost:8000/docs
 
 ### Dados sintéticos
 
-As chaves do Gemini e do Groq (cota gratuita) entram no `.env`. A geração completa faz cerca de 345 chamadas ao Gemini
+O conjunto pronto está no Hugging Face, sem precisar gerar nada:
+
+```python
+from datasets import load_dataset
+
+messages = load_dataset("G0m7s/deliverius-ai", "messages", revision="v1.0.0")
+```
+
+As configurações são `messages`, `messages_holdout`, `fraud_history`, `policy_qa` e `e2e_scenarios`. Para gerar de
+novo, as chaves do Gemini e do Groq (cota gratuita) entram no `.env`. A geração completa faz cerca de 345 chamadas ao Gemini
 e 55 ao Groq, dentro da cota de um dia; o cache de respostas permite retomar sem pagar de novo, e repetir a geração com
 o mesmo cache produz arquivos idênticos byte a byte.
 

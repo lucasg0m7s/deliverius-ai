@@ -2,6 +2,8 @@
 
 Resultado da change `gerador-dados`. O desenho está em `modelo-dominio.md`, seção 4, e as decisões em
 `decisoes-arquitetura.md`. Versão do gerador 1.0.0, semente 42, instante de referência 2026-10-31T23:59:59Z.
+Publicado em <https://huggingface.co/datasets/G0m7s/deliverius-ai>, tag `v1.0.0`, licença CC BY 4.0; o manifesto
+aponta o commit `2ea250c`, sem alterações pendentes.
 
 ## Conjuntos
 
