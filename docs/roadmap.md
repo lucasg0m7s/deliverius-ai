@@ -23,7 +23,7 @@ na proposal.
 | 7 | `pesquisa-intencao` | F2 Modelos e busca | 9–12/11 | 6 e o teste escrito por pessoas | R04, R05, R06, R07, R08, R09, R24 |
 | 8 | `busca-politicas` | F2 | 10–11/11 | 2, 3 | R08, R19 |
 | 9 | `classificador-intencao` | F2 | 12/11 | 7 | R03 |
-| 10 | `antifraude-reembolso` | F2 | 12–14/11 | 6, 9 | R03, R04, R05, R06, R07, R24 |
+| 10 | `antifraude-reembolso` | F2 | 12–14/11 | 6 | R03, R04, R05, R06, R07, R24 |
 | 11 | `acoes-e-aprovacoes` | F3 Agente e API | 14/11 | 2, 3 | R12, R22 |
 | 12 | `agente-atendimento` | F3 | 15–16/11 | 4, 5, 8, 9, 10, 11 | R12, R13, R14 |
 | 13 | `api-atendimento` | F3 | 17/11 | 12 | R02, R22 |
@@ -56,7 +56,6 @@ flowchart LR
   P --> B[8 busca-politicas]
   PI --> CI[9 classificador-intencao]
   G --> AF[10 antifraude-reembolso]
-  CI --> AF
   P --> AA[11 acoes-e-aprovacoes]
   M --> AG[12 agente-atendimento]
   L --> AG
@@ -257,8 +256,8 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
 - **Escopo:**
   - `intent/`: porta `IntentClassifier`, adaptador ONNX com temperatura e a rede de segurança por palavras-chave
     para o caminho sensível;
-  - a carga de artefatos do Hugging Face com revisão fixa e conferência do `manifest.json`, reaproveitada pelo
-    antifraude;
+  - a carga de artefatos do Hugging Face com revisão fixa, que **nasceu na change 10** (`deliverius.artifacts`) e é
+    reaproveitada aqui, com a conferência do `manifest.json` como no antifraude;
   - `GET /ready`.
 - **Spec:** `classificacao-intencao`.
 - **Pronto quando:** a aplicação classifica sem torch; o `/ready` falha se o esquema não bater; o F1 e o recall de
@@ -278,6 +277,20 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
     aos modelos de chat, decidido nesta change.
 
   O treino é local, em CPU, então a pesquisa e o serviço cabem numa change só.
+
+  Detalhado na proposta:
+  - a carga de artefatos com revisão fixa nasce aqui, em `deliverius.artifacts` (a 9 a reaproveita);
+  - a reclamação é definida igual no treino e na aplicação, então "recusadas antes" vira "enviadas à revisão em
+    90 dias";
+  - o leitor do contexto em Postgres, com um índice novo em `approval_requests`;
+  - a regra de escolha usa só a validação (a logística fica se o LightGBM não vencer);
+  - o `.predict(` seria liberado só em `fraud/scorer.py`;
+  - a porta do CI pontua outubro com o modelo publicado e o código atual de features.
+
+  **Como ficou:** a regra de escolha manteve a **regressão logística** (o LightGBM perdeu em setembro, IC da
+  diferença [−0,182; −0,007]). O adaptador é logístico, em numpy; o `lightgbm` ficou só no grupo `research`; o
+  `.predict(` não precisou de exceção. No teste: PR-AUC 0,452, Brier 0,077, custo de R$ 1,25 por reclamação contra
+  R$ 3,14 da regra de negócio. Relatório em `antifraude.md`.
 - **Fora:** o dataset e o notebook no Kaggle (trilha de publicação).
 - **Spec:** `antifraude`.
 - **Pronto quando:** PR-AUC, Brier, curva de confiabilidade e custo esperado no teste, contra um baseline de regras;
@@ -317,6 +330,9 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
     `RoleModels` ao `ModelFallbackMiddleware` do agente; os outros papéis usam `runnable()` e `call_or_degrade`.
     O `ModelRetryMiddleware` do agente também chama o modelo de novo e deve passar pelo governor, o que esta
     change confere.
+  - o nó `score_fraud`: lê o histórico com o `PostgresFraudContextReader`, monta o contexto com `claim_context`,
+    pontua e preenche o `FraudAssessment` da aprovação; o modelo é carregado na subida (`load_fraud_model`). Uma
+    `FraudScoringError` manda o caso para revisão humana (*fail closed*), nunca para execução automática.
 - **Fora:** a API (change 13) e qualquer ferramenta que escreve, que não existe por desenho.
 - **Spec:** `agente`.
 - **Pronto quando:** os sete cenários de `fluxos-do-agente.md` passam no pytest com o LLM falso e sem rede; retomar

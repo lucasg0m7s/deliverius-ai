@@ -23,7 +23,7 @@ flowchart LR
     C --> A[Agente LangGraph<br/>só leitura: pedido, entrega,<br/>histórico, política via RAG]
     A --> X[Proposta de ação<br/>saída estruturada]
     X --> R[Motor de política<br/>regras e limites em código]
-    R --> F[Antifraude<br/>LightGBM, limiar por custo]
+    R --> F[Antifraude<br/>regressão logística calibrada,<br/>revisão por custo]
     F -->|risco baixo| E[Executa<br/>idempotente]
     F -->|risco alto| H[Pausa para<br/>aprovação humana]
     E --> V[Resposta validada<br/>com citação]
@@ -38,6 +38,7 @@ flowchart LR
 | **Mascaramento (LGPD)** | CPF, CNPJ (inclusive o alfanumérico), cartão, telefone, e-mail, CEP e endereço mascarados antes de qualquer LLM ou log, com recall medido por tipo e limites publicados | [`src/deliverius/privacy/`](src/deliverius/privacy/), [`docs/seguranca.md`](docs/seguranca.md#4-mascaramento-de-dados-pessoais-privacy) |
 | **Camada de LLM** | Papéis por tarefa, provedores trocáveis (Gemini, Groq, Ollama), orçamento diário com reserva atômica no Postgres, pausa depois de um `429`, modo degradado tipado e custo por chamada | [`src/deliverius/llm/`](src/deliverius/llm/), [`docs/arquitetura.md`](docs/arquitetura.md#camada-de-llm) |
 | **Busca nas políticas (RAG)** | Full-text em português sem acento e embeddings `multilingual-e5-small` em ONNX (sem PyTorch), fundidos por RRF em SQL, com regra de "busca não confiável" para o agente não inventar regra. Porta de qualidade no CI | [`src/deliverius/retrieval/`](src/deliverius/retrieval/), [`docs/busca-politicas.md`](docs/busca-politicas.md) |
+| **Antifraude** | Features no ponto do tempo com um só código para treino e aplicação (provado por teste de propriedade e de paridade com o Postgres), regra de escolha escrita antes de rodar (a regressão logística venceu o LightGBM), calibração aplicada sem scikit-learn, revisão humana por custo esperado e porta no CI | [`src/deliverius/fraud/`](src/deliverius/fraud/), [`research/fraud/`](research/fraud/), [`docs/antifraude.md`](docs/antifraude.md) |
 | **Dados sintéticos** | O cenário vem primeiro e o rótulo é verdade de construção: o LLM só escreve o texto, com marcadores que o código preenche. Reprodutível por semente e cache, com divisões testadas contra vazamento | [`src/deliverius/datagen/`](src/deliverius/datagen/), [`docs/modelo-dominio.md`](docs/modelo-dominio.md#4-gerador-de-dados-sintéticos-datagen) |
 | **Decisões** | Cada decisão de arquitetura com as alternativas consideradas e o porquê | [`docs/decisoes-arquitetura.md`](docs/decisoes-arquitetura.md) |
 
@@ -45,11 +46,29 @@ flowchart LR
 
 | O quê | Resultado |
 | --- | --- |
-| Testes | 1.674 unitários (98% de cobertura) e 170 de integração contra Postgres real (Testcontainers) |
-| Motor de política e mascaramento | 100% de cobertura de ramos, exigida no CI |
+| Testes | 2.013 unitários (95% de cobertura) e 310 de integração contra Postgres real (Testcontainers) |
+| Motor de política, mascaramento, ações e features do antifraude | 100% de cobertura de ramos, exigida no CI |
 | Recall do mascaramento | Acima de 99% nos tipos estruturados em dados sintéticos; nomes próprios ainda não reconhecidos (limite escrito) |
 | Custo de LLM | Chamada real com ferramenta: US$ 0,000079 no Gemini e US$ 0,000048 no Groq (preço de lista equivalente; o projeto roda na cota gratuita), latência de 0,7 s e 0,3 a 0,5 s |
 | Dataset sintético | 2.969 mensagens rotuladas em 11 intenções, 550 de teste de outro gerador, 20.000 pedidos com 3.378 reclamações rotuladas para o antifraude (11,8% de fraude), 60 pares pergunta → política, 150 cenários de ponta a ponta; 5% de rótulo errado numa revisão à mão de 100 mensagens. Publicado em [huggingface.co/datasets/G0m7s/deliverius-ai](https://huggingface.co/datasets/G0m7s/deliverius-ai) (tag `v1.0.0`, CC BY 4.0) |
+
+## Antifraude: por que a regressão logística?
+
+Reclamações de outubro (462, com 51 fraudes), tocadas uma vez, depois da escolha feita só com setembro:
+
+| Modelo | PR-AUC [IC 95%] | Brier | Custo por reclamação |
+| --- | --- | --- | --- |
+| **Regressão logística calibrada** | **0,452 [0,348; 0,596]** | **0,077** | **R$ 1,25** (revisa quando p × valor ≥ R$ 4) |
+| LightGBM calibrado | 0,372 [0,272; 0,507] | 0,084 | — |
+| Regra de negócio (3+ reclamações em 30 dias) | 0,123 [0,110; 0,167] | — | R$ 3,14 |
+| Sem antifraude | — | — | R$ 3,22 |
+
+A regra de escolha foi escrita antes de rodar: o LightGBM só entraria se vencesse a logística com o intervalo de 95%
+da diferença todo acima de zero. Em setembro ele perdeu ([−0,18; −0,01]), e o modelo simples ficou. A aplicação
+aplica os coeficientes e o calibrador publicados com numpy e reproduz o scikit-learn até 2e-16. Modelo publicado
+em [huggingface.co/G0m7s/deliverius-fraud](https://huggingface.co/G0m7s/deliverius-fraud) (revisão fixa no código,
+SHA-256 de cada arquivo conferido, sem *pickle*). Relatório com curvas, SHAP e limites em
+[`docs/antifraude.md`](docs/antifraude.md).
 
 ## Busca nas políticas: por que híbrida?
 
@@ -81,8 +100,9 @@ O plano completo, change por change, está em [`docs/roadmap.md`](docs/roadmap.m
 | 5 | `camada-llm` | Papéis, provedores, orçamento, registro de uso e custo, cache, modelo falso | ✅ |
 | 6 | `gerador-dados` | Dados sintéticos rotulados por construção, CLI, publicação no Hugging Face | ✅ |
 | 8 | `busca-politicas` | Busca híbrida nas políticas com avaliação e porta no CI | ✅ |
+| 10 | `antifraude-reembolso` | Features no ponto do tempo, regressão logística calibrada contra LightGBM e regra de negócio, revisão por custo, modelo publicado com revisão fixa e porta no CI | ✅ |
 | 11 | `acoes-e-aprovacoes` | Ações idempotentes com a política reavaliada sob trava, aprovação humana com trava otimista, transferência para humano | ✅ |
-| 7, 9, 10 | Modelos | Pesquisa de intenção (4 abordagens), classificador servido, antifraude | ⏳ |
+| 7, 9 | Modelos | Pesquisa de intenção (4 abordagens), classificador servido | ⏳ |
 | 12–14 | Agente e API | Agente LangGraph, API, observabilidade | ⏳ |
 | 15–17 | Avaliação | Evals com clientes simulados e de segurança, juiz calibrado | ⏳ |
 | Extras | — | Demo pública, LoRA, servidor MCP, automação n8n | ⏳ |
@@ -93,7 +113,7 @@ Pré-requisitos: [uv](https://docs.astral.sh/uv/), que instala o Python 3.13, e 
 
 ```bash
 cp .env.example .env
-uv sync
+uv sync --group research             # o grupo `research` (pesquisa e porta do antifraude) fica fora da imagem
 docker compose up -d                 # Postgres 17 + pgvector na porta 5433
 uv run alembic upgrade head
 uv run fastapi dev src/deliverius/api/main.py   # http://localhost:8000/docs
@@ -122,6 +142,15 @@ uv run python -m deliverius.cli datagen validate-human data/human-test/messages.
 ```
 
 O formato do conjunto de teste escrito por pessoas está em [`data/human-test/README.md`](data/human-test/README.md).
+
+### Antifraude
+
+```bash
+uv run python -m research.fraud.gate                # baixa dataset e modelo nas revisões fixas e mede a porta
+uv run python -m research.fraud.train               # treino, escolha, teste e registro no MLflow (mlruns/)
+uv run python -m research.fraud.publish             # ensaio da publicação; --confirm envia
+uv run python -m deliverius.cli fraud fetch-model   # o modelo que a aplicação carrega, conferido por SHA-256
+```
 
 ## Qualidade
 
@@ -153,6 +182,7 @@ uv run pytest -m integration --no-cov   # integração: o Testcontainers sobe um
 | [`fluxos-do-agente.md`](docs/fluxos-do-agente.md) | Os 7 cenários com o estado final esperado |
 | [`modelo-dominio.md`](docs/modelo-dominio.md) | Dados, tabelas, política, gerador de dados sintéticos |
 | [`ml-e-avaliacao.md`](docs/ml-e-avaliacao.md) | Ciclo de vida de ML, evals e CI |
+| [`antifraude.md`](docs/antifraude.md) | Relatório do antifraude: escolha do modelo, teste, custo, calibração, SHAP e limites |
 | [`seguranca.md`](docs/seguranca.md) | OWASP LLM, LGPD, mascaramento, provedores |
 | [`observabilidade.md`](docs/observabilidade.md) | Traces, logs, métricas, alertas |
 | [`decisoes-arquitetura.md`](docs/decisoes-arquitetura.md) | Todas as decisões, com alternativas |

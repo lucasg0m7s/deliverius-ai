@@ -7,7 +7,7 @@ context: |
 
   Deliverius AI — projeto de portfólio. O Deliverius é um app de delivery fictício; o Deli é seu agente de
   atendimento (Python 3.13, FastAPI, LangGraph, PostgreSQL + pgvector), que age dentro da política com aprovação humana, apoiado por modelos próprios (classificador de
-  intenção BERTimbau, antifraude LightGBM).
+  intenção BERTimbau, antifraude por regressão logística calibrada).
 
   Fonte da verdade, não duplicar aqui:
   - `CLAUDE.md` — comandos, verificação e convenções.

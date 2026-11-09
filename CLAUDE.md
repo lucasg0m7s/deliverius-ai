@@ -2,7 +2,7 @@
 
 Projeto de portfólio do Lucas Gomes Ferreira. O Deliverius é um app de delivery fictício; o **Deli** é o seu
 agente de atendimento com IA. O Deli resolve problemas de pedido agindo dentro da política (reembolso, cupom,
-cancelamento, escalonamento com aprovação humana), apoiado por modelos próprios: um classificador de intenção ajustado (BERTimbau) e um antifraude de reembolso (LightGBM).
+cancelamento, escalonamento com aprovação humana), apoiado por modelos próprios: um classificador de intenção ajustado (BERTimbau) e um antifraude de reembolso (regressão logística calibrada, escolhida contra o LightGBM).
 
 Documentação (leia a parte relevante antes de propor ou desenhar uma mudança, em vez de redecidir o que já está
 registrado):
@@ -13,6 +13,7 @@ registrado):
 | `docs/fluxos-do-agente.md` | Os 7 cenários com o estado final esperado (viram testes, evals e demo) |
 | `docs/modelo-dominio.md` | Convenções de dados, tabelas, política do Deliverius, gerador de dados sintéticos |
 | `docs/ml-e-avaliacao.md` | Ciclo de vida de ML (parte 1) e evals e CI (parte 2) |
+| `docs/antifraude.md` | Relatório do antifraude: escolha do modelo, métricas no teste, custo, calibração e limites |
 | `docs/convencoes-codigo.md` e `docs/glossario.md` | Padrões de código, testes, dependências e nomes do domínio |
 | `docs/seguranca.md` | OWASP LLM e agêntico, API, LGPD, mascaramento, provedores, checklist de revisão |
 | `docs/observabilidade.md` | Traces, logs, métricas do painel, alertas |
@@ -28,7 +29,7 @@ O Deliverius é inventado: nenhuma marca, cor ou nome de empresa real no projeto
 ## Comandos
 
 ```bash
-uv sync                                         # dependências (Python 3.13 gerenciado pelo uv)
+uv sync --group research                        # dependências, com o grupo da pesquisa (Python 3.13 pelo uv)
 docker compose up -d                            # Postgres 17 + pgvector na porta 5433
 uv run alembic upgrade head                     # migrations
 uv run fastapi dev src/deliverius/api/main.py   # API em http://localhost:8000 (docs em /docs)

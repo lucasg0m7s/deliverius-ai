@@ -9,7 +9,7 @@ Toda proposal cita os IDs que cobre.
 | R01 | Engenharia de software sólida | Módulos com dependências explícitas e verificadas, mypy estrito, testes, CI | Repositório, badge do CI | `fundacao-projeto`, `nucleo-dominio` e todas as seguintes |
 | R02 | Software para produtos de IA | API de atendimento com conversa em streaming, aprovações e métricas | `/docs` da API, demo | `api-atendimento`, `demo-gradio` |
 | R03 | Modelos em operação, com ênfase em LLMs | Camada de LLM com reserva, custo por chamada e orçamento; modelos próprios servidos pela API com revisão fixa | `llm/`, `intent/`, `fraud/` | `camada-llm`, `classificador-intencao`, `antifraude-reembolso` |
-| R04 | Treino e ajuste fino de modelos | BERTimbau ajustado para intenção; LightGBM antifraude; LoRA num decodificador pequeno | Model cards no Hugging Face | `pesquisa-intencao`, `antifraude-reembolso`, `lora-intencao` |
+| R04 | Treino e ajuste fino de modelos | BERTimbau ajustado para intenção; antifraude (LightGBM contra regressão logística, que venceu); LoRA num decodificador pequeno | Model cards no Hugging Face | `pesquisa-intencao`, `antifraude-reembolso`, `lora-intencao` |
 | R05 | Pipelines de IA reproduzíveis | Geração de dados, treino, registro (MLflow) e avaliação, cada etapa por comando | `research/`, CI | `gerador-dados`, `pesquisa-intencao`, `antifraude-reembolso`, `evals-agente` |
 | R06 | Implementações de ML abertas | Baselines, validação, análise de erros, calibração, SHAP | `research/` | `pesquisa-intencao`, `antifraude-reembolso` |
 | R07 | Modelos e datasets publicados | Classificador de intenção, antifraude, datasets sintéticos e, como extra, o modelo LoRA | Links no README | `gerador-dados`, `pesquisa-intencao`, `antifraude-reembolso`, `lora-intencao` |

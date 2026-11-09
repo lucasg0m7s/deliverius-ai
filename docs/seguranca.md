@@ -262,7 +262,7 @@ Os logs da geração e o validador do teste escrito por pessoas não imprimem te
 
 - **Dependências:** fixadas pelo `uv.lock`; `pip-audit` e Dependabot no CI.
 - **Modelos e artefatos só em formatos sem código executável:**
-  - ONNX, `safetensors` e o modelo LightGBM em texto;
+  - ONNX, `safetensors` e modelos em JSON só com números (o antifraude: coeficientes e calibrador);
   - o calibrador salvo como **JSON de parâmetros**, nunca `pickle`/`joblib`, porque carregar um pickle executa
     código arbitrário.
 - **Modelos do Hugging Face numa revisão fixa,** com a verificação do esquema de features ao subir (tema 5). O

@@ -79,72 +79,110 @@ entregue quando o cliente diz 'não chegou ainda'". Isso entra no relatório `do
 
 ### 1.4 Antifraude de reembolso
 
-**O problema:** para cada reclamação, a probabilidade de não haver incidente real (`modelo-dominio.md`, seção 4).
+Implementado na change 10 (`antifraude-reembolso`). Resultados e gráficos em `antifraude.md`.
 
-**Features** (`fraud/features.py`, um código só para o treino e a aplicação):
+**O problema:** para cada reclamação que a política **não negou**, a probabilidade de não haver incidente real
+(`modelo-dominio.md`, seção 4). A reclamação negada não é pontuada (o nó `score_fraud` só roda depois da política),
+então ela sai do treino e do teste: são 3.159 das 3.378 reclamações do dataset `v1.0.0`.
 
-- **De histórico:**
+**Uma reclamação, igual no treino e na aplicação.** As features usam só o que a aplicação também grava. Uma
+reclamação anterior é um pedido de aprovação (instante: `claimed_at`) ou uma ação executada sem aprovação (instante:
+`executed_at`); a ação que nasceu de uma aprovação conta uma vez só. A aplicação não grava a negativa da política, por
+isso a feature "reclamações recusadas antes" do plano virou **"reclamações enviadas à revisão em 90 dias"**: senão o
+treino veria um valor que a aplicação nunca vê (*training-serving skew*). O desfecho do revisor nunca entra, porque
+entregaria o rótulo.
+
+**Features** (`fraud/features.py`, um código só para o treino e a aplicação; 27 números, versão `1.0.0`):
+
+- **De histórico (janelas de 30 e 90 dias):**
   - idade da conta;
   - pedidos em 90 dias;
   - reclamações em 30 e em 90 dias;
-  - valor reembolsado em 30 dias;
-  - razão entre reclamações e pedidos;
-  - reclamações recusadas antes.
-- **Do pedido:** valor, tipo de reclamação, tempo desde a entrega, se a entrega foi marcada como entregue, forma de
-  pagamento, hora do dia.
+  - valor pedido em reembolsos em 30 dias;
+  - razão entre reclamações e pedidos em 90 dias (zero sem pedidos);
+  - reclamações enviadas à revisão em 90 dias.
+- **Do pedido e da reclamação:** valor do pedido, valor pedido, `requested_fraction` (pedido ÷ valor do pedido: o
+  oportunista exagera, e a fração não depende do tamanho do pedido), minutos desde a entrega (ausente sem entrega),
+  se estava marcado como entregue, hora local.
+- **Indicadores 0/1** do tipo de ação, do motivo e da forma de pagamento (enums fechados, sem mapa de categorias que
+  possa divergir entre treino e aplicação).
 
 **Regras:**
-- **Cálculo no ponto do tempo (*point-in-time*).** Cada feature usa só dados **anteriores** ao momento da
-  reclamação. Contar uma reclamação futura no histórico é o vazamento mais comum em antifraude e infla qualquer
-  métrica.
+- **Cálculo no ponto do tempo (*point-in-time*).** Cada feature usa só fatos com instante **estritamente anterior**
+  ao da reclamação, e o próprio `compute_features` aplica o filtro, sem confiar em quem chama. Um teste de propriedade
+  (Hypothesis) acrescenta fatos no mesmo instante e depois dele e confere que o vetor não muda.
+- **Teto de 1.000 linhas por janela,** igual nos dois lados: o leitor do Postgres busca no máximo 1.000 linhas por
+  consulta, e a contagem satura no mesmo teto.
+- **Hora local em UTC−3 fixo:** o Brasil não tem horário de verão desde 2019, e assim não se depende do `tzdata`.
 - **Nenhuma feature que sirva de substituto para atributo sensível,** como CEP ou bairro. Isso evita discriminação
-  indireta e conversa com o art. 20 da LGPD.
+  indireta e conversa com o art. 20 da LGPD. Um teste confere os nomes contra a lista de campos proibidos.
+- **Esquema versionado:** nomes, ordem, tipos e versão viram um SHA-256 (`schema_hash`), com teste de hash dourado.
 
 **Divisão por tempo:**
 
-| Meses | Uso |
+| Meses de 2026 | Uso |
 | --- | --- |
-| 1 a 4 | Treino |
-| 5 | Validação: calibração e limiar |
-| 6 | Teste, tocado uma vez só |
+| maio a agosto | Treino; os hiperparâmetros do LightGBM saem de três dobras de janela crescente (treina até o mês k, valida no k + 1) |
+| setembro | Validação: escolha do modelo, calibração e limiar fixo |
+| outubro | Teste, calculado uma vez, depois da escolha |
+
+Os pedidos começam em 01/05, então as janelas de 90 dias ficam incompletas até o fim de julho. O treino aceita isso
+(descartar maio a julho deixaria só agosto); setembro e outubro têm a janela inteira.
 
 **Modelos:**
 
 | Modelo | Papel |
 | --- | --- |
 | Regra fixa ("3 ou mais reclamações em 30 dias") | Baseline de negócio: o que uma empresa faria sem ML |
-| Regressão logística | Baseline de ML |
-| LightGBM | Candidato |
+| Regressão logística (imputação pela mediana e padronização) | Baseline de ML |
+| LightGBM (grade de 12 pontos, sem pesos de classe, determinístico) | Candidato |
+
+**Regra de escolha** (escrita antes de rodar, só na validação):
+
+1. Métrica principal: PR-AUC em setembro.
+2. O LightGBM é escolhido quando o intervalo de 95% (*bootstrap* pareado estratificado, 2.000 reamostras) da
+   diferença `PR-AUC(LightGBM) − PR-AUC(logística)` fica todo acima de zero. Senão, fica a regressão logística.
+3. O escolhido precisa vencer a regra de negócio pelo mesmo critério; se não vencer, a change para.
+
+**Resultado:** a diferença ficou em [−0,182; −0,007]; **ficou a regressão logística**, que venceu a regra de negócio
+com folga. Os números estão em `antifraude.md`.
 
 **Métricas:**
-- **PR-AUC** (principal, porque a fraude é rara e a ROC-AUC engana nesse caso);
+- **PR-AUC** (principal, porque a fraude é rara e a ROC-AUC engana nesse caso), com intervalo de 95%;
 - ROC-AUC;
-- **Brier** e curva de confiabilidade (calibração);
+- **Brier** e curva de confiabilidade em 10 faixas por quantil (calibração);
 - recall na capacidade de revisão (o quanto de fraude se pega mandando só os 5% mais suspeitos para humanos);
-- **custo esperado** no teste.
+- **custo esperado** no teste, por regra.
 
-**Calibração:** com `CalibratedClassifierCV(FrozenEstimator(modelo))` no mês 5, que é a forma atual
-([scikit-learn](https://scikit-learn.org/stable/auto_examples/frozen/plot_frozen_examples.html)).
-- A **sigmoide** é o padrão.
-- A isotônica só entra se houver positivos suficientes na validação, perto de mil. Com poucas fraudes ela decora a
-  validação.
-- A escolha é feita pelo Brier na validação.
+**Calibração:** sigmoide com `CalibratedClassifierCV(FrozenEstimator(modelo))` em setembro, que é a forma atual
+([scikit-learn](https://scikit-learn.org/stable/auto_examples/frozen/plot_frozen_examples.html)). A isotônica não
+entra: são cerca de 60 fraudes por mês, longe dos ~1.000 positivos que ela pede. Para a logística, o calibrador lê
+a saída bruta (`decision_function`); a aplicação aplica `p = 1 / (1 + exp(a · bruta + b))` com os dois números do
+artefato, sem scikit-learn, e um teste confere a igualdade até 1e-9 em todo o teste.
 
 **Decisão por custo, considerando o valor:** em vez de um limiar fixo, o reembolso vai para um humano quando
 
 ```
-probabilidade de fraude × valor do reembolso ≥ custo de uma revisão humana
+probabilidade de fraude × valor pedido ≥ custo de uma revisão humana
 ```
 
-- O custo da revisão é uma premissa explícita: tempo do atendente mais o atrito com o cliente, cerca de R$ 4.
+- O custo da revisão é uma premissa explícita: tempo do atendente mais o atrito com o cliente, R$ 4,00. Ele vai no
+  `decision.json` do artefato; a aplicação não tem esse número no código.
 - Faz sentido de negócio: uma nota 0,3 num reembolso de R$ 8 não vale uma revisão; a mesma nota num de R$ 180, vale.
-- O relatório compara essa regra com um limiar fixo escolhido pelo `TunedThresholdClassifierCV`.
-- Os limites da política (R$ 50 por ação, R$ 100 em 30 dias) continuam valendo **por cima** disso.
+- O relatório compara essa regra com um limiar fixo escolhido pelo `TunedThresholdClassifierCV` (sobre o estimador
+  calibrado e congelado, com um *scorer* de custo que recebe o valor por *metadata routing*).
+- Os limites da política (R$ 50 por ação, R$ 100 em 30 dias) continuam valendo **por cima** disso: a nota nunca
+  torna permitido o que a política mandou para aprovação.
 
 **Explicações:**
-- **Na aplicação:** o próprio LightGBM calcula os valores SHAP (`predict(..., pred_contrib=True)`). O console mostra
-  os 3 fatores que mais pesaram, sem a biblioteca `shap` em produção.
-- **Na pesquisa:** a biblioteca `shap` faz os gráficos globais para o relatório e para o notebook do Kaggle.
+- **Na aplicação:** a contribuição de cada feature é `coeficiente × valor padronizado`, no espaço bruto (log-odds),
+  e a soma delas com o intercepto é a saída bruta. O console mostra os 3 fatores que mais pesaram, sem a biblioteca
+  `shap` em produção. (Se o LightGBM tivesse vencido, seria o `pred_contrib` dele.)
+- **Na pesquisa:** a biblioteca `shap` faz o gráfico global para o relatório.
+
+**Porta no CI:** `python -m research.fraud.gate` baixa o dataset e o modelo nas revisões fixas, recalcula as features
+de outubro com o código atual, pontua com o *scorer* da aplicação e falha com PR-AUC abaixo de 0,4424 ou Brier acima
+de 0,0820 (o medido no teste, com margem de 0,01 e 0,005).
 
 ### 1.5 MLflow
 
@@ -165,17 +203,22 @@ probabilidade de fraude × valor do reembolso ≥ custo de uma revisão humana
 **Cada modelo é publicado no Hugging Face Hub com:**
 - os arquivos do modelo:
   - classificador: `model.onnx` int8, `tokenizer.json`, rótulos e temperatura;
-  - antifraude: modelo LightGBM, parâmetros do calibrador e regra de decisão;
+  - antifraude: coeficientes e padronização da regressão logística (`logistic.json`), parâmetros do calibrador e
+    regra de decisão, só números em JSON, sem *pickle*;
   - e5: `model.onnx`;
 - um **model card** (dados, métricas por conjunto, limites, usos não pretendidos);
 - um **`manifest.json`** com a versão do modelo, a versão do dataset, o ID da execução no MLflow, as métricas e o
   **hash do esquema de features**.
 
-**A aplicação fixa a versão:** ela carrega o repositório pela **revisão fixa** (hash do commit), definida na
-configuração. Na inicialização, ela confere se o hash do esquema de features do manifesto bate com o do código. Se
-não bater, **a aplicação não sobe**. É a trava contra o *training-serving skew* (tema 1).
+**A aplicação fixa a versão:** ela carrega o repositório pela **revisão fixa** (hash do commit), definida **no
+código**, junto com o tamanho e o SHA-256 do `manifest.json` (`deliverius.artifacts`). O manifesto lista o SHA-256 de
+cada arquivo, e cada um é conferido antes de ser lido. Depois, o hash do esquema de features do manifesto é comparado
+com o do código. Se algo não bater, **o modelo é recusado** com a regra e o arquivo. É a trava contra arquivo
+adulterado e contra o *training-serving skew* (tema 1). O download é um comando explícito (`fetch-model`); a
+aplicação nunca vai à rede buscar modelo.
 
-**Trocar de modelo** é mudar a revisão na configuração, num PR que mostra a comparação de métricas.
+**Trocar de modelo** é mudar a revisão e o hash do manifesto no código, num PR que mostra a comparação de métricas e
+passa pela porta do CI. Uma variável de ambiente deixaria trocar o modelo sem PR e sem porta.
 
 ### 1.7 Ferramentas do grupo `research`
 

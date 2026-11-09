@@ -62,17 +62,20 @@ por capacidade** (pedidos, política, antifraude, agente…). Isso é diferente 
     nunca por variável global.
   - Nos testes, a mesma montagem recebe os falsos.
 - **Assíncrono para entrada e saída, thread para CPU.** API, banco (asyncpg) e LLM são `async`. A inferência do
-  classificador e do antifraude é cálculo de CPU e roda em thread (`asyncio.to_thread`), para não travar o event
-  loop.
+  classificador é cálculo de CPU e roda em thread (`asyncio.to_thread`), para não travar o event loop. O antifraude
+  escolhido (regressão logística) são 27 multiplicações: roda direto, sem thread.
 - **A aplicação não depende do PyTorch.**
   - O classificador ajustado é exportado para **ONNX** e roda com `onnxruntime`.
-  - O antifraude roda com o próprio LightGBM.
-  - Torch, Transformers, PEFT, MLflow e Jupyter ficam no grupo de dependências `research`, que a aplicação não
-    instala.
+  - O antifraude é uma regressão logística aplicada em numpy, a partir de números em JSON (coeficientes,
+    padronização e os dois parâmetros do calibrador). O LightGBM foi o candidato e perdeu na regra de escolha
+    (`antifraude.md`).
+  - Torch, Transformers, PEFT, scikit-learn, LightGBM, MLflow e Jupyter ficam no grupo de dependências `research`,
+    que a aplicação não instala; um contrato do import-linter proíbe importá-los em `src/`.
 
   Resultado: imagem Docker leve, início rápido e CPU gratuita do Hugging Face Spaces suficiente.
-- **A aplicação carrega os modelos como artefatos versionados:** do Hugging Face Hub com revisão fixa, ou de uma
-  pasta local. O MLflow é a ferramenta da pesquisa (experimentos e registro), não uma dependência da aplicação em
+- **A aplicação carrega os modelos como artefatos versionados:** do Hugging Face Hub com revisão fixa no código,
+  baixados por um comando explícito para uma pasta local e conferidos por tamanho e SHA-256 (`deliverius.artifacts`)
+  antes de qualquer leitura. O MLflow é a ferramenta da pesquisa (experimentos e registro), não uma dependência da aplicação em
   execução.
 - **As features do antifraude têm um único código** (`fraud/features.py`), usado pelo treino em `research/` e pela
   aplicação. Isso evita o *training-serving skew*, que é o modelo ver em produção features calculadas de um jeito
@@ -95,6 +98,7 @@ deliverius-ai/
 │   │
 │   ├── shared/                Tipos básicos (Money, IDs), relógio, erros base. Puro
 │   ├── db/                    Engine assíncrona, sessão, tabelas ORM (fonte do Alembic)
+│   ├── artifacts/             Arquivos de um repositório do Hugging Face numa revisão fixa, conferidos por SHA-256
 │   ├── observability/         Logs (structlog e redação), OpenTelemetry e helpers de span
 │   │
 │   ├── orders/                Pedido, item, entrega, cliente, histórico; repositório
@@ -104,7 +108,8 @@ deliverius-ai/
 │   ├── actions/               Execução idempotente de reembolso, cupom e cancelamento; auditoria
 │   ├── approvals/             Pedidos de aprovação humana: criar, listar, decidir
 │   ├── intent/                Porta IntentClassifier + adaptador ONNX + rótulos
-│   ├── fraud/                 Porta FraudScorer + adaptador LightGBM + features (compartilhadas com o treino)
+│   ├── fraud/                 Features no ponto do tempo (compartilhadas com o treino), FraudScorer + adaptador
+│   │                          logístico, leitor do histórico em Postgres, carga conferida do modelo
 │   ├── retrieval/             Indexação e busca híbrida das políticas (pgvector + full-text pt_unaccent + RRF; e5 em ONNX)
 │   ├── llm/                   Papéis, fábrica de modelos, preço, uso, orçamento, prompts, cache (tema 3)
 │   │
@@ -115,9 +120,9 @@ deliverius-ai/
 │   ├── datagen/               Gerador de cenários e conversas sintéticas
 │   └── evals/                 Harness de avaliação (cliente simulado, métricas, relatório)
 │
-├── research/                  Pesquisa e treino (notebooks e scripts para o Colab). Importa `deliverius`; nunca o contrário
+├── research/                  Pesquisa e treino (scripts com YAML, `python -m research.<área>.<etapa>`). Importa `deliverius`; nunca o contrário
 │   ├── intent/
-│   └── fraud/
+│   └── fraud/                 config.yaml, dataset, split, train, evaluate, candidate, publish e gate (porta do CI)
 ├── data/                      Só amostras pequenas e README; os datasets completos ficam no Hugging Face com versão
 ├── tests/
 │   ├── unit/                  Espelha src/deliverius/<módulo>/
@@ -154,7 +159,7 @@ importam uns aos outros.
 2  actions │ approvals │ intent │ fraud │ retrieval │ llm     capacidades
 1  policy │ privacy                     regras puras
 0  orders                               domínio de delivery
-—  shared │ db │ observability │ config utilitários (qualquer camada pode usar)
+—  shared │ db │ observability │ config │ artifacts   utilitários (qualquer camada pode usar)
 ```
 
 Contratos, nesta ordem de importância:
@@ -240,7 +245,7 @@ mask_input ──► classify_intent ──► (roteamento)
 | roteamento | Aresta condicional | Sensível → humano; dúvida → FAQ; problema com pedido → agente; confiança abaixo do limiar → pergunta |
 | `support_agent` | **Agente** (`create_agent` do LangChain, como subgrafo) | Investiga com ferramentas de leitura e devolve uma `ActionProposal` |
 | `check_policy` | Código puro (`policy`) | Decide entre permitida, precisa de aprovação e negada, com motivo e teto. Negada volta ao agente com o motivo, no máximo 2 vezes |
-| `score_fraud` | Modelo próprio (`fraud`) | Nota calibrada. Nota ≥ limiar **ou** valor acima do limite de autoaprovação → humano |
+| `score_fraud` | Modelo próprio (`fraud`) | Nota calibrada e os 3 fatores que mais pesaram. Probabilidade × valor pedido ≥ custo da revisão **ou** a política já pediu aprovação → humano. Falha ao pontuar → humano (*fail closed*) |
 | `request_approval` | Código (`approvals`) | Cria o pedido de aprovação (idempotente) e gera a mensagem "em análise" para o cliente |
 | `await_approval` | `interrupt(..., response_schema=ApprovalDecision)` | **Só** a pausa. Ao retomar, este nó roda de novo; como não tem efeito colateral, isso é seguro |
 | `execute_action` | Código (`actions`) | Executa com chave de idempotência e grava a auditoria, na mesma transação |
