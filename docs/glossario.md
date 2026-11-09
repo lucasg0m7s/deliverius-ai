@@ -66,3 +66,7 @@ em inglês. Quando um termo novo surgir, ele entra aqui antes de entrar no códi
 | Manifesto do dataset | `manifest.json` (`Manifest`) | Versão, semente, commit, prompts, modelos, contagens e SHA-256 de cada arquivo de uma geração |
 | Cenário de ponta a ponta | `E2EScenarioRecord` | Estado inicial, objetivo do cliente e estado final esperado de um fluxo F1–F7, usado pelos evals |
 | Saída estruturada | `call_structured` | Chamada de LLM que devolve um objeto Pydantic validado ou o modo degradado (`INVALID_OUTPUT`) |
+| Trecho da política | `policy_chunks`, `chunk_id` | Uma seção de um documento de política, com o texto preenchido e um ID citável (`POL-03#prazo`) |
+| Busca híbrida | `SearchMode.HYBRID` | Lista lexical (full-text, termos com OU) e semântica (embedding) fundidas por RRF |
+| RRF | `rrf` | Reciprocal Rank Fusion: soma de `1 / (60 + posição)` em cada lista; combina posições sem calibrar notas |
+| Busca não confiável | `SearchResult.reliable` | Maior similaridade abaixo do limiar (0,85): o agente diz que não encontrou a regra em vez de inventar |

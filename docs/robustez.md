@@ -155,6 +155,7 @@ hábito que importa, e o custo é o mesmo.
 | **Travas** | Ordem fixa entre tabelas, registrada no design (por exemplo: conversa → pedido → ação), para não haver *deadlock*. Transação que trava define `SET LOCAL lock_timeout` curto (2 s); estourou → `ConflictError`, que o chamador pode repetir porque a operação é idempotente |
 | **Isolamento** | `READ COMMITTED`, o padrão. Corrida se resolve com trava explícita, UPDATE condicional ou restrição, nunca contando com o nível de isolamento |
 | **Migrations** | `lock_timeout` no início de cada migration, para não travar a aplicação esperando uma trava. Índice em tabela que já tem dados é criado com `CONCURRENTLY` (fora de transação, no `autocommit_block` do Alembic). Migração de dados em lotes, separada da migração de esquema |
+| **Reindexação** | Trabalho caro (embeddings) antes da transação; a troca dos trechos de cada documento acontece sob `pg_advisory_xact_lock` com `lock_timeout`, e os hashes são relidos dentro da trava. Duas indexações juntas não duplicam nem perdem trechos (teste de integração) |
 | **Pool** | A soma dos pools de todos os processos (API, tarefas, migrations) cabe no limite de conexões do banco da demo |
 
 ## 9. Serviços de fora

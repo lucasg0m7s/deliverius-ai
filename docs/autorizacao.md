@@ -37,6 +37,9 @@ continua valendo.
 | Métricas do painel | — | Ler | — |
 | Políticas (`POL-xx`) | Ler (são públicas) | Ler | `search_policy` |
 
+**Exceção ao `AccessScope`:** as políticas (`policy_chunks`) e o catálogo de restaurantes são públicos e iguais para
+todas as sandboxes, então seus repositórios não recebem escopo. Nenhum deles tem dado de cliente.
+
 Qualquer combinação que não está na matriz é **proibida por padrão**.
 
 ## 3. Rotas públicas

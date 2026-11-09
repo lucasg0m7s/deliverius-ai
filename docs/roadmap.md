@@ -244,6 +244,9 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
   - regra de "busca não confiável".
 
   Mais a mini-pesquisa com os cerca de 60 pares pergunta → trecho.
+
+  Detalhado na proposta: ONNX oficial numa revisão fixa conferida por SHA-256 (sem exportação própria); lexical com
+  termos unidos por OU; regra de confiança por similaridade (0,85); porta por recall@3, MRR e recusa fora do escopo.
 - **Fora:** a variante com embedding maior, se não sobrar tempo.
 - **Spec:** `busca-politicas`.
 - **Pronto quando:** a tabela compara lexical, semântica e híbrida em recall@3 e MRR; recall@3 e MRR entram como

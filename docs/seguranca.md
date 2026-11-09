@@ -265,7 +265,9 @@ Os logs da geração e o validador do teste escrito por pessoas não imprimem te
   - ONNX, `safetensors` e o modelo LightGBM em texto;
   - o calibrador salvo como **JSON de parâmetros**, nunca `pickle`/`joblib`, porque carregar um pickle executa
     código arbitrário.
-- **Modelos do Hugging Face numa revisão fixa,** com a verificação do esquema de features ao subir (tema 5).
+- **Modelos do Hugging Face numa revisão fixa,** com a verificação do esquema de features ao subir (tema 5). O
+  embedding da busca (`multilingual-e5-small`) é conferido por tamanho e SHA-256 de cada arquivo antes de carregar;
+  arquivo divergente é recusado citando o nome.
 - **Imagem Docker:** base slim, usuário sem root, verificada pelo Trivy no CI (tema 10).
 - **Ferramentas de desenvolvimento fora da imagem:** o grupo de dependências `datagen` (Faker, `huggingface-hub`) não é
   instalado na imagem (`--no-default-groups`), e o `pip-audit` do CI audita só as dependências da aplicação.

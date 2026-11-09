@@ -197,7 +197,7 @@ Tema 7, decidido em 2026-10-31.
 | Nível | O que mede | Usa LLM real? | Quando roda |
 | --- | --- | --- | --- |
 | **1. Testes** | O código faz o que deveria: regras, nós, idempotência, os 7 cenários com LLM falso | Não | Todo PR |
-| **2. Evals de componentes** | F1 do classificador nos 3 conjuntos de teste, recall@3 e MRR da busca, PR-AUC e Brier do antifraude | Não (modelos locais) | Todo PR que mexe em `intent`, `retrieval`, `fraud` ou nos artefatos; **barram regressão** |
+| **2. Evals de componentes** | F1 do classificador nos 3 conjuntos de teste, recall@3 e MRR da busca (piso 0,50 e 0,36, mais 58% de recusa fora do escopo, em `busca-politicas.md`), PR-AUC e Brier do antifraude | Não (modelos locais) | Todo PR que mexe em `intent`, `retrieval`, `fraud` ou nos artefatos; **barram regressão** |
 | **3. Evals de ponta a ponta** | O agente resolve o problema do cliente? Estilo τ-bench | Sim | Sob demanda (comando local ou `workflow_dispatch`) |
 | **4. Evals de segurança** | Ataques viram ação ou vazamento? | Sim | Sob demanda, junto com o nível 3 |
 

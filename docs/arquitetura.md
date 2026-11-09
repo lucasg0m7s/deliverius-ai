@@ -524,7 +524,7 @@ Tema 4, decidido em 2026-10-31. O domínio e os documentos estão em `modelo-dom
 
 | Parte | Como |
 | --- | --- |
-| Lexical | Full-text do Postgres com uma configuração `pt_unaccent` (o dicionário `portuguese` mais o `unaccent`, para "cancelamento" achar "cancelar" e "não" achar "nao"); coluna `tsvector` gerada e índice GIN |
+| Lexical | Full-text do Postgres com uma configuração `pt_unaccent` (o dicionário `portuguese` mais o `unaccent`, para "cancelamento" achar "cancelar" e "não" achar "nao"); coluna `tsvector` gerada e índice GIN. Os termos da consulta são unidos por **OU** (`plainto_tsquery` com `&` trocado por `|`), porque com E nenhuma seção contém todas as palavras de uma pergunta em linguagem natural (medido: recall@3 0) |
 | Semântica | pgvector com `multilingual-e5-small` (384 dimensões, prefixos `query:` e `passage:` exigidos pelo E5) |
 | Fusão | **RRF** (Reciprocal Rank Fusion, k = 60) dos 5 primeiros de cada lado, em SQL puro; vão os 3 melhores para o LLM |
 | Índice vetorial | **Nenhum, de propósito.** São cerca de 60 trechos, e a busca exata é instantânea e não perde resultado. Um HNSW só se paga com milhares de linhas; esse limite fica anotado |
@@ -538,8 +538,11 @@ Tema 4, decidido em 2026-10-31. O domínio e os documentos estão em `modelo-dom
 
 ### Embeddings sem PyTorch
 
-- **O `multilingual-e5-small` é exportado por nós para ONNX** e roda com `onnxruntime` e `tokenizers`. É o mesmo
-  caminho do classificador, e a aplicação continua sem torch (tema 1).
+- **O `multilingual-e5-small` roda em ONNX** com `onnxruntime` e `tokenizers`, e a aplicação continua sem torch
+  (tema 1). Usamos o `onnx/model.onnx` que o próprio autor publica, numa revisão fixa
+  (`614241f622f53c4eeff9890bdc4f31cfecc418b3`), com o SHA-256 de cada arquivo conferido antes de carregar; exportar por
+  nós exigiria PyTorch e uma conta para publicar o mesmo arquivo. `python -m deliverius.cli retrieval fetch-model`
+  baixa e confere; a aplicação nunca baixa em execução.
 - **Pacotes prontos ficaram de fora:**
   - o `sentence-transformers` traz o torch;
   - o `fastembed` teve problemas nos arquivos ONNX dos modelos E5
@@ -550,8 +553,9 @@ Tema 4, decidido em 2026-10-31. O domínio e os documentos estão em `modelo-dom
 
 - **O `answer_faq` só pode citar IDs que vieram na busca,** e o `validate_reply` confere isso.
 - **Se a busca não for confiável,** a resposta é "não encontrei essa regra" e a conversa vai para um humano, em vez
-  de inventar. "Não confiável" quer dizer: nenhum trecho veio dos dois lados, ou a similaridade ficou abaixo do
-  limiar.
+  de inventar. "Não confiável" quer dizer: a maior similaridade semântica ficou abaixo de **0,85**, o limiar medido
+  (98% dos pares confiáveis, 63% das perguntas fora do escopo recusadas). A regra "nenhum trecho dos dois lados" foi
+  medida e descartada: só 82% dos pares têm trecho nas duas listas. Números em `busca-politicas.md`.
 
 ### Avaliação (mini-pesquisa)
 

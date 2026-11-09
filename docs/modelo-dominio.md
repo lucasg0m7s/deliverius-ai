@@ -30,7 +30,7 @@ customers ─┬─< orders >── restaurants
                                   (a ligação com `conversations` entra na change 13, como `NOT VALID`)
 
 audit_log            (só inserção: quem, o quê, quando, ID de correlação)
-policy_chunks        (documento, seção, texto, embedding, tsvector)
+policy_chunks        (ID citável, documento, seção, texto preenchido, hash, embedding de 384, tsvector gerado)
 langgraph checkpoints (tabelas do AsyncPostgresSaver; detalhe interno do LangGraph)
 ```
 
