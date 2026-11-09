@@ -80,7 +80,7 @@ O plano completo, change por change, está em [`docs/roadmap.md`](docs/roadmap.m
 | 4 | `mascaramento-dados` | Detecção e mascaramento de dados pessoais com marcadores estáveis | ✅ |
 | 5 | `camada-llm` | Papéis, provedores, orçamento, registro de uso e custo, cache, modelo falso | ✅ |
 | 6 | `gerador-dados` | Dados sintéticos rotulados por construção, CLI, publicação no Hugging Face | 🔄 |
-| 8 | `busca-politicas` | Busca híbrida nas políticas com avaliação e porta no CI | 🔄 |
+| 8 | `busca-politicas` | Busca híbrida nas políticas com avaliação e porta no CI | ✅ |
 | 7, 9, 10 | Modelos | Pesquisa de intenção (4 abordagens), classificador servido, antifraude | ⏳ |
 | 11–14 | Agente e API | Ações e aprovações, agente LangGraph, API, observabilidade | ⏳ |
 | 15–17 | Avaliação | Evals com clientes simulados e de segurança, juiz calibrado | ⏳ |

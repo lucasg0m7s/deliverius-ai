@@ -41,10 +41,10 @@
 
 ## 8. Verificação
 
-- [ ] 8.1 `uv run ruff format --check .` e `uv run ruff check .`
-- [ ] 8.2 `uv run mypy`
-- [ ] 8.3 `uv run lint-imports`
-- [ ] 8.4 `uv run pytest` (cobertura mínima de 85%)
-- [ ] 8.5 `uv run pytest -m integration --no-cov`, conferindo o número de testes passados
-- [ ] 8.6 `openspec validate busca-politicas --strict` e o `git grep` do `CLAUDE.local.md` vazio
-- [ ] 8.7 CI verde no GitHub depois do push
+- [x] 8.1 `uv run ruff format --check .` e `uv run ruff check .`
+- [x] 8.2 `uv run mypy`
+- [x] 8.3 `uv run lint-imports`
+- [x] 8.4 `uv run pytest` (cobertura mínima de 85%)
+- [x] 8.5 `uv run pytest -m integration --no-cov`, conferindo o número de testes passados
+- [x] 8.6 `openspec validate busca-politicas --strict` e o `git grep` do `CLAUDE.local.md` vazio
+- [x] 8.7 CI verde no GitHub depois do push
