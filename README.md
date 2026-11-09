@@ -37,6 +37,7 @@ flowchart LR
 | **Motor de política** | Regras de reembolso, cupom e cancelamento em código puro, com os números numa fonte única que também preenche os documentos citados pelo RAG: o texto nunca contradiz a regra. 100% dos ramos cobertos | [`src/deliverius/policy/`](src/deliverius/policy/), [`docs/modelo-dominio.md`](docs/modelo-dominio.md#3-a-política-do-deliverius) |
 | **Mascaramento (LGPD)** | CPF, CNPJ (inclusive o alfanumérico), cartão, telefone, e-mail, CEP e endereço mascarados antes de qualquer LLM ou log, com recall medido por tipo e limites publicados | [`src/deliverius/privacy/`](src/deliverius/privacy/), [`docs/seguranca.md`](docs/seguranca.md#4-mascaramento-de-dados-pessoais-privacy) |
 | **Camada de LLM** | Papéis por tarefa, provedores trocáveis (Gemini, Groq, Ollama), orçamento diário com reserva atômica no Postgres, pausa depois de um `429`, modo degradado tipado e custo por chamada | [`src/deliverius/llm/`](src/deliverius/llm/), [`docs/arquitetura.md`](docs/arquitetura.md#camada-de-llm) |
+| **Busca nas políticas (RAG)** | Full-text em português sem acento e embeddings `multilingual-e5-small` em ONNX (sem PyTorch), fundidos por RRF em SQL, com regra de "busca não confiável" para o agente não inventar regra. Porta de qualidade no CI | [`src/deliverius/retrieval/`](src/deliverius/retrieval/), [`docs/busca-politicas.md`](docs/busca-politicas.md) |
 | **Dados sintéticos** | O cenário vem primeiro e o rótulo é verdade de construção: o LLM só escreve o texto, com marcadores que o código preenche. Reprodutível por semente e cache, com divisões testadas contra vazamento | [`src/deliverius/datagen/`](src/deliverius/datagen/), [`docs/modelo-dominio.md`](docs/modelo-dominio.md#4-gerador-de-dados-sintéticos-datagen) |
 | **Decisões** | Cada decisão de arquitetura com as alternativas consideradas e o porquê | [`docs/decisoes-arquitetura.md`](docs/decisoes-arquitetura.md) |
 
@@ -44,11 +45,26 @@ flowchart LR
 
 | O quê | Resultado |
 | --- | --- |
-| Testes | 1.494 unitários (98% de cobertura) e 81 de integração contra Postgres real (Testcontainers) |
+| Testes | 1.674 unitários (98% de cobertura) e 170 de integração contra Postgres real (Testcontainers) |
 | Motor de política e mascaramento | 100% de cobertura de ramos, exigida no CI |
 | Recall do mascaramento | Acima de 99% nos tipos estruturados em dados sintéticos; nomes próprios ainda não reconhecidos (limite escrito) |
 | Custo de LLM | Chamada real com ferramenta: US$ 0,000079 no Gemini e US$ 0,000048 no Groq (preço de lista equivalente; o projeto roda na cota gratuita), latência de 0,7 s e 0,3 a 0,5 s |
 | Dataset sintético | 2.969 mensagens rotuladas em 11 intenções, 550 de teste de outro gerador, 20.000 pedidos com 3.378 reclamações rotuladas para o antifraude (11,8% de fraude), 60 pares pergunta → política, 150 cenários de ponta a ponta |
+
+## Busca nas políticas: por que híbrida?
+
+60 perguntas → seção da política, acerto nos 3 primeiros trechos (intervalo de 95% por bootstrap):
+
+| Modo | recall@3 (seção) | MRR@3 (seção) | recall@3 (documento) |
+| --- | --- | --- | --- |
+| Lexical (full-text `pt_unaccent`) | 0,35 [0,22; 0,47] | 0,21 | 0,52 |
+| Semântica (e5-small, ONNX) | 0,55 [0,43; 0,67] | 0,43 | 0,70 |
+| Híbrida (RRF) | 0,55 [0,42; 0,68] | 0,41 | 0,72 |
+
+Latência p95 de 29 ms em CPU. Com 60 pares, a híbrida não se mostrou melhor que a semântica com significância; fica
+pelos termos exatos e números que a semântica dilui, e o relatório mostra por que boa parte dos erros por seção é
+ambiguidade de rótulo. A regra de busca não confiável recusa 63% das perguntas fora do escopo e mantém 98% das
+perguntas da política. Detalhes, achados e limites em [`docs/busca-politicas.md`](docs/busca-politicas.md).
 
 ## Status
 
@@ -64,7 +80,8 @@ O plano completo, change por change, está em [`docs/roadmap.md`](docs/roadmap.m
 | 4 | `mascaramento-dados` | Detecção e mascaramento de dados pessoais com marcadores estáveis | ✅ |
 | 5 | `camada-llm` | Papéis, provedores, orçamento, registro de uso e custo, cache, modelo falso | ✅ |
 | 6 | `gerador-dados` | Dados sintéticos rotulados por construção, CLI, publicação no Hugging Face | 🔄 |
-| 7–10 | Modelos e busca | Pesquisa de intenção (4 abordagens), busca híbrida, antifraude | ⏳ |
+| 8 | `busca-politicas` | Busca híbrida nas políticas com avaliação e porta no CI | 🔄 |
+| 7, 9, 10 | Modelos | Pesquisa de intenção (4 abordagens), classificador servido, antifraude | ⏳ |
 | 11–14 | Agente e API | Ações e aprovações, agente LangGraph, API, observabilidade | ⏳ |
 | 15–17 | Avaliação | Evals com clientes simulados e de segurança, juiz calibrado | ⏳ |
 | Extras | — | Demo pública, LoRA, servidor MCP, automação n8n | ⏳ |
