@@ -295,7 +295,10 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
     pedido travado (`FOR UPDATE`) e a **política reavaliada na hora da execução**;
   - `approvals/`: criar, listar e decidir (com trava otimista e motivo obrigatório; a mesma decisão repetida é
     idempotente), uma aprovação pendente por conversa (índice único parcial), mais a transferência com resumo
-    estruturado.
+    estruturado;
+  - a tabela `conversations` mínima (sandbox, cliente, pedido, status), para as chaves estrangeiras e a regra de uma
+    pendente por conversa; criar conversas, a lease e as mensagens ficam na change 13;
+  - a trava do cliente antes da do pedido, porque o limite de 30 dias soma pedidos diferentes.
 - **Spec:** `acoes` e `aprovacoes`.
 - **Pronto quando:** 100% de cobertura de ramos em `actions`; testes de integração com operações disparadas juntas
   provam: a mesma ação gera um único reembolso; dois reembolsos diferentes no mesmo pedido nunca passam do teto;
