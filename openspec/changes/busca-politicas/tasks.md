@@ -31,13 +31,13 @@
 - [x] 6.1 `cli/retrieval.py`: `fetch-model`, `index` e `evaluate`, com textos em português e códigos de saída como os do `datagen`; testes dos argumentos e códigos de saída
 - [x] 6.2 `data/eval/policy_qa.jsonl` (os 60 pares da v1.0.0), `data/eval/out_of_scope.jsonl` (≈ 30 perguntas fora do escopo escritas à mão) e `data/eval/README.md` com a origem
 - [x] 6.3 `evaluation.py`: recall@3, MRR, bootstrap de 1.000 com semente fixa, taxa de não confiável nos dois conjuntos, latência p50/p95 de 100 consultas; testes unitários das métricas com casos feitos à mão
-- [ ] 6.4 Mini-pesquisa: rodar `evaluate`, escolher o limiar pela regra do design, fixar o padrão de `RETRIEVAL_MIN_SIMILARITY` e o piso da porta; relatório `docs/busca-politicas.md` com a tabela, o limiar, os erros comentados e os limites
+- [x] 6.4 Mini-pesquisa: rodar `evaluate`, escolher o limiar pela regra do design, fixar o padrão de `RETRIEVAL_MIN_SIMILARITY` e o piso da porta; relatório `docs/busca-politicas.md` com a tabela, o limiar, os erros comentados e os limites
 - [x] 6.5 Porta no CI: teste de integração com o modelo real que exige recall@3 e MRR da híbrida acima do piso; `actions/cache` do modelo no job de qualidade com a chave da revisão e passo `fetch-model` antes dos testes de integração
 
 ## 7. Documentação
 
-- [ ] 7.1 `arquitetura.md` (ONNX oficial, tabela, SQL, limiar), `modelo-dominio.md` (`policy_chunks`), `ml-e-avaliacao.md` (porta da busca), `seguranca.md` (revisão e SHA-256 do modelo), `robustez.md` (trava da indexação), `autorizacao.md` (políticas sem `AccessScope`), `glossario.md`, `roadmap.md` e `decisoes-arquitetura.md`
-- [ ] 7.2 README: tabela lexical × semântica × híbrida com recall@3, MRR e latência, e o link para o relatório
+- [x] 7.1 `arquitetura.md` (ONNX oficial, tabela, SQL, limiar), `modelo-dominio.md` (`policy_chunks`), `ml-e-avaliacao.md` (porta da busca), `seguranca.md` (revisão e SHA-256 do modelo), `robustez.md` (trava da indexação), `autorizacao.md` (políticas sem `AccessScope`), `glossario.md`, `roadmap.md` e `decisoes-arquitetura.md`
+- [x] 7.2 README: tabela lexical × semântica × híbrida com recall@3, MRR e latência, e o link para o relatório
 
 ## 8. Verificação
 
