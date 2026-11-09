@@ -26,6 +26,13 @@ jobs:
         run: uv run pytest tests/unit/policy --cov-reset --cov=deliverius.policy --cov-fail-under=100
       - name: Masking needs 100% branch coverage
         run: uv run pytest tests/unit/privacy --cov-reset --cov=deliverius.privacy --cov-fail-under=100
+      - uses: actions/cache@v4
+        with:
+          path: models/multilingual-e5-small
+          # `MODEL_REVISION`, first eight characters; a unit test keeps the two equal.
+          key: e5-small-614241f6
+      - name: Embedding model (pinned revision, SHA-256 checked, skipped when cached)
+        run: uv run python -m deliverius.cli retrieval fetch-model
       - run: uv run pytest -m integration --no-cov
 
   security:
