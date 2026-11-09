@@ -6,32 +6,23 @@ Size and SHA-256 of each file live here, so a swapped, truncated or tampered fil
 application itself never reaches the network for the model.
 """
 
-import hashlib
-from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Final
 
-import structlog
-from huggingface_hub import hf_hub_download
-
-from deliverius.shared.errors import DeliveriusError, ExternalServiceError
-
-logger = structlog.get_logger(__name__)
+from deliverius.artifacts import (
+    ArtifactDownloadError,
+    ArtifactFileError,
+    Downloader,
+    ModelFile,
+    PinnedRepository,
+    fetch_files,
+    verify_files,
+)
 
 MODEL_REPOSITORY: Final = "intfloat/multilingual-e5-small"
 MODEL_REVISION: Final = "614241f622f53c4eeff9890bdc4f31cfecc418b3"
-_HASH_CHUNK_BYTES: Final = 1024 * 1024
-
-
-@dataclass(frozen=True, slots=True)
-class ModelFile:
-    """A file of the model repository, by path, with the size and SHA-256 it must have."""
-
-    name: str
-    size_bytes: int
-    sha256: str
-
+REPOSITORY: Final = PinnedRepository(MODEL_REPOSITORY, MODEL_REVISION)
 
 ONNX_MODEL: Final = ModelFile(
     "onnx/model.onnx",
@@ -50,31 +41,30 @@ MODEL_CONFIG: Final = ModelFile(
 )
 MODEL_FILES: Final = (ONNX_MODEL, TOKENIZER, MODEL_CONFIG)
 
-type Downloader = Callable[[ModelFile, Path], None]
+# The names the search has always exposed; the behaviour lives in `deliverius.artifacts`.
+ModelFileError = ArtifactFileError
+ModelDownloadError = ArtifactDownloadError
 
-
-class ModelFileError(DeliveriusError):
-    """A model file is missing or differs from the pinned one; `file` names it."""
-
-    def __init__(self, rule: str, file: str) -> None:
-        super().__init__(f"{rule}: {file}")
-        self.rule = rule
-        self.file = file
-
-
-class ModelDownloadError(ExternalServiceError):
-    """The hub did not deliver `file` (network down, timeout, refused): run the command again."""
-
-    def __init__(self, file: str) -> None:
-        super().__init__(f"model_download.failed: {file}")
-        self.file = file
+__all__ = [
+    "MODEL_CONFIG",
+    "MODEL_FILES",
+    "MODEL_REPOSITORY",
+    "MODEL_REVISION",
+    "ONNX_MODEL",
+    "REPOSITORY",
+    "TOKENIZER",
+    "Downloader",
+    "ModelDownloadError",
+    "ModelFile",
+    "ModelFileError",
+    "fetch_model",
+    "verify_model_files",
+]
 
 
 def verify_model_files(model_dir: Path, expected: Iterable[ModelFile] = MODEL_FILES) -> None:
     """Raise `ModelFileError` for the first file that is absent, of another size or another hash."""
-    for file in expected:
-        _require_match(model_dir, file)
-    logger.info("retrieval.model_verified", model_dir=str(model_dir))
+    verify_files(REPOSITORY, model_dir, expected)
 
 
 def fetch_model(
@@ -82,55 +72,5 @@ def fetch_model(
     expected: Iterable[ModelFile] = MODEL_FILES,
     download: Downloader | None = None,
 ) -> tuple[str, ...]:
-    """Download the files that are missing or wrong, verifying each; returns what was downloaded.
-
-    A file that already matches is not downloaded again, nor hashed a second time. A partial or
-    altered file is removed first, so it can never be mistaken for a finished download.
-    """
-    files = tuple(expected)
-    download = download or _download_from_hub
-    downloaded: list[str] = []
-    for file in files:
-        if _mismatch(model_dir, file) is None:
-            continue
-        (model_dir / file.name).unlink(missing_ok=True)
-        download(file, model_dir)
-        downloaded.append(file.name)
-        _require_match(model_dir, file)
-    logger.info("retrieval.model_verified", model_dir=str(model_dir))
-    return tuple(downloaded)
-
-
-def _download_from_hub(file: ModelFile, model_dir: Path) -> None:
-    try:
-        hf_hub_download(MODEL_REPOSITORY, file.name, revision=MODEL_REVISION, local_dir=model_dir)
-    except Exception as error:
-        # The hub client has its own HTTP error hierarchy, not all of it an `OSError`.
-        logger.warning("retrieval.model_download_failed", file=file.name)
-        raise ModelDownloadError(file.name) from error
-
-
-def _require_match(model_dir: Path, file: ModelFile) -> None:
-    rule = _mismatch(model_dir, file)
-    if rule is not None:
-        logger.warning("retrieval.model_rejected", file=file.name, rule=rule)
-        raise ModelFileError(rule, file.name)
-
-
-def _mismatch(model_dir: Path, file: ModelFile) -> str | None:
-    path = model_dir / file.name
-    if not path.is_file():
-        return "model_file.missing"
-    if path.stat().st_size != file.size_bytes:
-        return "model_file.size_mismatch"
-    if _sha256(path) != file.sha256:
-        return "model_file.hash_mismatch"
-    return None
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        while chunk := stream.read(_HASH_CHUNK_BYTES):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Download the files that are missing or wrong, verifying each; returns what was downloaded."""
+    return fetch_files(REPOSITORY, model_dir, expected, download)
