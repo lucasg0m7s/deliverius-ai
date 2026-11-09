@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+from typing import Protocol
 from uuid import UUID
 
 from deliverius.shared.clock import require_aware
@@ -45,6 +46,12 @@ class AuditEntry:
         found = _personal_data_path(self.data, "data")
         if found is not None:
             raise InvariantError(f"audit.personal_data:{found}")
+
+
+class AuditSink(Protocol):
+    """Where an audit entry goes; it joins the caller's transaction, saved with it or not at all."""
+
+    async def record(self, entry: AuditEntry) -> None: ...
 
 
 def _personal_data_path(value: JsonValue | Mapping[str, JsonValue], path: str) -> str | None:

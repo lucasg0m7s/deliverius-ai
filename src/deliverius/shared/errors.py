@@ -7,7 +7,14 @@ class NotFoundError(DeliveriusError):
 
 
 class ConflictError(DeliveriusError):
-    """The operation clashes with the current state (already decided, already executed)."""
+    """The operation clashes with the current state (already decided, already executed).
+
+    `code` is stable, such as `approval_already_decided`: the API returns it, tests match on it.
+    """
+
+    def __init__(self, code: str = "conflict") -> None:
+        super().__init__(code)
+        self.code = code
 
 
 class InvalidInputError(DeliveriusError):

@@ -50,3 +50,12 @@ def translate_db_errors() -> Iterator[None]:
     except OSError as error:
         logger.error("db.unavailable", error_type=type(error).__name__)  # noqa: TRY400
         raise DatabaseUnavailableError from error
+
+
+def violated_constraint(error: DBAPIError) -> str | None:
+    """Name of the constraint an integrity error broke, when the driver says which."""
+    for candidate in (error.orig, getattr(error.orig, "__cause__", None)):
+        name = getattr(candidate, "constraint_name", None)
+        if isinstance(name, str):
+            return name
+    return None

@@ -9,6 +9,7 @@ from deliverius.db.errors import (
     DatabaseTimeoutError,
     DatabaseUnavailableError,
     translate_db_errors,
+    violated_constraint,
 )
 from deliverius.shared.errors import DeliveriusError
 
@@ -73,3 +74,35 @@ def test_cancellation_is_never_swallowed() -> None:
 def test_unrelated_errors_pass_through_untouched() -> None:
     with pytest.raises(KeyError), translate_db_errors():
         raise KeyError("unrelated")
+
+
+class NamedConstraintError(Exception):
+    def __init__(self, constraint_name: object) -> None:
+        super().__init__("violation")
+        self.constraint_name = constraint_name
+
+
+def integrity_error(orig: BaseException) -> DBAPIError:
+    return DBAPIError("INSERT", None, orig)
+
+
+def test_violated_constraint_reads_the_name_from_the_driver_error() -> None:
+    error = integrity_error(NamedConstraintError("uq_actions_idempotency_key"))
+
+    assert violated_constraint(error) == "uq_actions_idempotency_key"
+
+
+def test_violated_constraint_reads_the_name_from_the_cause_the_adapter_wraps() -> None:
+    adapter = DriverError("23505")
+    adapter.__cause__ = NamedConstraintError("fk_actions_approval_matches_request")
+
+    assert violated_constraint(integrity_error(adapter)) == "fk_actions_approval_matches_request"
+
+
+@pytest.mark.parametrize("name", [None, 42], ids=["missing", "not-a-string"])
+def test_violated_constraint_is_none_when_the_driver_gives_no_name(name: object) -> None:
+    assert violated_constraint(integrity_error(NamedConstraintError(name))) is None
+
+
+def test_violated_constraint_is_none_for_an_error_without_a_driver_cause() -> None:
+    assert violated_constraint(integrity_error(DriverError("23505"))) is None

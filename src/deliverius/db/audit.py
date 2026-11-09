@@ -25,3 +25,13 @@ async def record(session: AsyncSession, entry: AuditEntry) -> None:
     )
     with translate_db_errors():
         await session.flush()
+
+
+class PostgresAuditSink:
+    """`AuditSink` on the caller's session."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def record(self, entry: AuditEntry) -> None:
+        await record(self._session, entry)

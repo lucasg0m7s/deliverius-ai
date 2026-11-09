@@ -10,6 +10,11 @@ OrderId = NewType("OrderId", UUID)
 OrderItemId = NewType("OrderItemId", UUID)
 DeliveryEventId = NewType("DeliveryEventId", UUID)
 AuditEntryId = NewType("AuditEntryId", UUID)
+ConversationId = NewType("ConversationId", UUID)
+ActionId = NewType("ActionId", UUID)
+ApprovalRequestId = NewType("ApprovalRequestId", UUID)
+HandoffId = NewType("HandoffId", UUID)
+ReviewerId = NewType("ReviewerId", UUID)
 
 
 def new_id() -> UUID:
