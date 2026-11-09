@@ -1,17 +1,28 @@
 from dataclasses import replace
+from datetime import datetime
 from typing import assert_never
 
 from deliverius.orders.cursor import Page, PageRequest, decode_cursor, page_from_rows
-from deliverius.orders.models import Order, OrderSummary
+from deliverius.orders.models import (
+    DeliveryEvent,
+    EventActor,
+    Order,
+    OrderStatus,
+    OrderSummary,
+    can_transition,
+)
 from deliverius.shared.access import AccessScope, CustomerScope, SandboxScope
-from deliverius.shared.ids import OrderId
+from deliverius.shared.clock import require_aware
+from deliverius.shared.errors import InvariantError, NotFoundError
+from deliverius.shared.ids import CustomerId, DeliveryEventId, OrderId, new_id
 
 
 class InMemoryOrderRepository:
-    """`OrderReader` kept in a dict, with the same contract as Postgres (scope, order, pagination).
+    """`OrderReader` and `OrderLocker` kept in a dict, with the same contract as Postgres.
 
-    For tests of code that reads orders; the shared contract suite keeps both implementations
-    interchangeable.
+    For tests of code that reads or changes orders; the shared contract suites keep both
+    implementations interchangeable. Locks are no-ops: unit tests run one operation at a time, and
+    waiting for a lock is proved against Postgres.
     """
 
     def __init__(self, orders: list[Order] | None = None) -> None:
@@ -36,6 +47,28 @@ class InMemoryOrderRepository:
         if after is not None:
             visible = [s for s in visible if (s.placed_at, s.id) < (after.placed_at, after.id)]
         return page_from_rows(visible[: page.limit + 1], page.limit)
+
+    async def lock_customer(self, scope: CustomerScope) -> CustomerId | None:
+        known = any(_in_scope(scope, order) for order in self._orders.values())
+        return scope.customer_id if known else None
+
+    async def lock_order(self, scope: CustomerScope, order_id: OrderId) -> Order | None:
+        return await self.get_order(scope, order_id)
+
+    async def mark_cancelled(self, scope: CustomerScope, order_id: OrderId, at: datetime) -> None:
+        require_aware(at, "at")
+        order = await self.get_order(scope, order_id)
+        if order is None:
+            raise NotFoundError
+        if not can_transition(order.status, OrderStatus.CANCELLED):
+            raise InvariantError("order.cancel_transition_not_allowed")
+        cancelled = DeliveryEvent(
+            id=DeliveryEventId(new_id()),
+            status=OrderStatus.CANCELLED,
+            actor=EventActor.SYSTEM,
+            occurred_at=at,
+        )
+        self.add(replace(order, status=OrderStatus.CANCELLED, events=(*order.events, cancelled)))
 
 
 def _in_scope(scope: AccessScope, order: Order) -> bool:

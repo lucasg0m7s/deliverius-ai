@@ -1,13 +1,13 @@
 from collections.abc import Sequence
 from datetime import timedelta
-from typing import Any, Self
 
 import pytest
-from sqlalchemy import event, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from support.order_builders import BASE_TIME, build_order
 from support.order_reader_contract import OrderReaderContract, OrderStore
 from support.order_rows import insert_orders
+from support.sql_recorder import StatementRecorder
 
 from deliverius.orders.cursor import PageRequest
 from deliverius.orders.models import Order
@@ -31,24 +31,6 @@ class TestPostgresOrderReader(OrderReaderContract):
     @pytest.fixture
     def store(self, session: AsyncSession) -> OrderStore:
         return PostgresStore(session)
-
-
-class StatementRecorder:
-    """Records every SQL statement the session sends, with its driver parameters."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self.statements: list[tuple[str, Any]] = []
-        self._engine = session.bind.engine.sync_engine  # type: ignore[union-attr]
-
-    def __enter__(self) -> Self:
-        event.listen(self._engine, "before_cursor_execute", self._record)
-        return self
-
-    def __exit__(self, *_: object) -> None:
-        event.remove(self._engine, "before_cursor_execute", self._record)
-
-    def _record(self, _conn: Any, _cursor: Any, statement: str, parameters: Any, *_: Any) -> None:
-        self.statements.append((statement, parameters))
 
 
 @pytest.mark.parametrize("item_count", [1, 20])

@@ -15,7 +15,7 @@ from deliverius.orders.models import (
     Restaurant,
     can_transition,
 )
-from deliverius.orders.ports import OrderReader
+from deliverius.orders.ports import OrderLocker, OrderReader
 from deliverius.orders.repository import PostgresOrderRepository
 
 __all__ = [
@@ -27,6 +27,7 @@ __all__ = [
     "InMemoryOrderRepository",
     "Order",
     "OrderItem",
+    "OrderLocker",
     "OrderReader",
     "OrderStatus",
     "OrderSummary",
