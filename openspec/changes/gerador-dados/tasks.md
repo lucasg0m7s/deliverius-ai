@@ -51,9 +51,9 @@
 
 - [x] 8.1 Integração (Postgres): geração de mensagens com o falso pela `LlmRuntime` real, gravando `llm_calls` e respeitando o orçamento; orçamento esgotado no meio para a execução sem manifesto
 - [x] 8.2 `-m llm`: um cenário real no Gemini (`datagen`) e um no Groq (`datagen_holdout`) com saída estruturada válida e linha de uso com tokens e custo
-- [ ] 8.3 Geração completa com semente fixa (`all`), dividida em dias se a cota pedir; conferir contagens contra `modelo-dominio.md`, seção 4, e descarte ≤ 20% por intenção
+- [x] 8.3 Geração completa com semente fixa (`all`), dividida em dias se a cota pedir; conferir contagens contra `modelo-dominio.md`, seção 4, e descarte ≤ 20% por intenção
 - [x] 8.4 Revisão à mão de 100 mensagens estratificadas; defeitos contados em `docs/dados-sinteticos.md`, com descartes, diversidade, taxa de fraude e ruído
-- [ ] 8.5 Amostras de até 50 linhas por conjunto em `data/samples/` e `data/README.md`; conferir que as amostras não têm nada além de dados sintéticos
+- [x] 8.5 Amostras de até 50 linhas por conjunto em `data/samples/` e `data/README.md`; conferir que as amostras não têm nada além de dados sintéticos
 
 ## 9. Documentação
 
@@ -71,5 +71,5 @@
 - [x] 11.3 `uv run lint-imports`
 - [x] 11.4 `uv run pytest` (cobertura mínima de 85%)
 - [x] 11.5 `uv run pytest -m integration --no-cov`, conferindo o número de testes passados (sem o Docker eles pulam com sucesso)
-- [ ] 11.6 `uv run pytest -m llm --no-cov`
+- [x] 11.6 `uv run pytest -m llm --no-cov`
 - [x] 11.7 `openspec validate gerador-dados --strict` e o `git grep` do `CLAUDE.local.md` vazio
