@@ -59,8 +59,8 @@ que grava os trechos. Duas indexações simultâneas MUST NOT duplicar nem perde
 
 ### Requirement: Busca híbrida com RRF
 
-O sistema SHALL buscar trechos por duas listas, a lexical (full-text em português sem acento, `pt_unaccent`) e a
-semântica (similaridade de cosseno com o embedding da consulta), com os 5 primeiros de cada uma, e combiná-las por
+O sistema SHALL buscar trechos por duas listas, a lexical (full-text em português sem acento, `pt_unaccent`, com os
+termos da consulta unidos por OU e ordenados por relevância) e a semântica (similaridade de cosseno com o embedding da consulta), com os 5 primeiros de cada uma, e combiná-las por
 Reciprocal Rank Fusion com k = 60, devolvendo os 3 melhores com o ID, o texto, a posição em cada lista e a
 similaridade. A consulta MUST ser normalizada, limitada em tamanho e convertida em consulta de texto sem interpretar
 operadores escritos pelo usuário. A busca MUST oferecer também os modos só lexical e só semântica, para a avaliação.
@@ -82,14 +82,16 @@ operadores escritos pelo usuário. A busca MUST oferecer também os modos só le
 
 ### Requirement: Busca não confiável
 
-O sistema SHALL marcar o resultado como não confiável quando nenhum trecho aparece nas duas listas ou quando a maior
-similaridade semântica fica abaixo de um limiar configurado. O limiar MUST vir da mini-pesquisa, com o valor e os
-números que o justificam registrados no relatório.
+O sistema SHALL marcar o resultado como não confiável quando a maior similaridade semântica fica abaixo de um limiar
+configurado. A regra e o limiar MUST vir da mini-pesquisa: o maior limiar que mantém pelo menos 95% dos pares
+confiáveis, com o valor, a taxa de recusa fora do escopo e a regra descartada registrados no relatório. A regra MUST
+ser configurável entre "só similaridade" e "trecho nas duas listas e similaridade", para a avaliação comparar as duas.
 
-#### Scenario: Pergunta fora do escopo
+#### Scenario: Conjunto fora do escopo
 
-- **WHEN** a consulta é "qual a previsão do tempo amanhã"
-- **THEN** o resultado é marcado como não confiável
+- **WHEN** as perguntas fora do escopo versionadas são buscadas com a regra e o limiar padrão
+- **THEN** pelo menos o piso registrado (58%) é marcado como não confiável, e pelo menos 95% dos pares continuam
+  confiáveis
 
 #### Scenario: Pergunta da política
 
@@ -107,6 +109,11 @@ ou o MRR da busca híbrida ficar abaixo do piso registrado.
 
 - **WHEN** uma mudança faz o recall@3 da busca híbrida cair abaixo do piso
 - **THEN** o teste de avaliação falha com os valores medido e esperado
+
+#### Scenario: Acerto por documento
+
+- **WHEN** a avaliação roda
+- **THEN** ela também mede recall@3 e MRR considerando acerto qualquer trecho do documento certo
 
 #### Scenario: Tabela comparativa
 

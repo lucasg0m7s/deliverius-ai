@@ -169,6 +169,21 @@ otimista; as perguntas fora do escopo não entram na escolha e dão a medida hon
 - import-linter: `retrieval` na camada de capacidades (pode importar `policy`, `privacy`, `db`, `shared`); contrato
   novo "onnxruntime e tokenizers só em `retrieval`" (a change 9 acrescenta `intent`).
 
+### Decidido na mini-pesquisa (2026-11-08)
+
+- **Lexical com OU.** Com `websearch_to_tsquery`, os termos são unidos por E e nenhuma seção contém todas as palavras
+  de uma pergunta em linguagem natural: recall@3 lexical 0. A consulta passou a ser
+  `replace(plainto_tsquery('pt_unaccent', :q)::text, '&', '|')::tsquery`; o `plainto_tsquery` não lê operador nenhum,
+  então o OU é a única estrutura e a consulta continua imune a `!`, `:*`, aspas e afins.
+- **Regra de confiança "só similaridade", limiar 0,85.** A regra "nas duas listas e similaridade" nunca chega a 95% dos
+  pares confiáveis (só 81,7% deles têm trecho nas duas listas). Pela regra escrita antes dos números, ficou a de só
+  similaridade no maior limiar com ≥ 95%: 0,85, com 98,3% dos pares confiáveis e 63,3% das perguntas fora do escopo
+  recusadas. A mudança de regra veio depois de ver os dados e está registrada como tal no relatório.
+- **Porta por taxa, não por exemplo.** "Qual a previsão do tempo amanhã" passa do limiar; o teste de exemplo virou o
+  piso de recusa sobre o conjunto fora do escopo (58%).
+- **Revisão do modelo no hash:** trocar o modelo reindexa todos os documentos.
+- **Acerto também por documento:** os rótulos por seção são ruidosos (uma pergunta cabe em mais de uma seção).
+
 ## Checklist de `docs/robustez.md`, seção 11
 
 | Item | Resposta |
