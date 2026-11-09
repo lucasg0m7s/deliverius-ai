@@ -58,11 +58,11 @@
 ## 9. Documentação
 
 - [x] 9.1 `modelo-dominio.md` seção 4 (divisão 70/15/15, formato, marcadores, papel `datagen_holdout`), `arquitetura.md` (papel novo, `call_structured`, contratos), `ml-e-avaliacao.md` (linhagem pelo manifesto), `seguranca.md` (nada pessoal ao LLM no gerador, `HF_TOKEN`), `glossario.md` (cenário, variação, marcador, hash dourado), `roadmap.md` (escopo detalhado) e `decisoes-arquitetura.md` (as decisões de `design.md` com alternativas)
-- [ ] 9.2 README: seção "Dados sintéticos" com os comandos na ordem, os tamanhos, o link do dataset no Hugging Face (depois da publicação) e o número da revisão à mão
+- [x] 9.2 README: seção "Dados sintéticos" com os comandos na ordem, os tamanhos, o link do dataset no Hugging Face (depois da publicação) e o número da revisão à mão
 
 ## 10. Publicação (só com autorização)
 
-- [ ] 10.1 Com o `HF_TOKEN` no `.env`, a licença confirmada e a autorização dada: `publish` sem confirmação para revisar o card, depois com confirmação; conferir a tag `v<versão>` e o carregamento por `datasets.load_dataset` de cada config
+- [x] 10.1 Com o `HF_TOKEN` no `.env`, a licença confirmada e a autorização dada: `publish` sem confirmação para revisar o card, depois com confirmação; conferir a tag `v<versão>` e o carregamento por `datasets.load_dataset` de cada config
 
 ## 11. Verificação
 
