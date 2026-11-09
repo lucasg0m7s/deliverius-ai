@@ -30,38 +30,38 @@
 
 ## 5. Aprovações
 
-- [ ] 5.1 `approvals/models.py` e `ports.py`: `ApprovalRequest`, `ApprovalStatus`, `Decision`, `FraudAssessment` (nota entre 0 e 1, versão, fatores), portas
-- [ ] 5.2 `approvals/repository.py`: criar com `ON CONFLICT` e tradução do índice parcial, `get` com escopo de cliente ou sandbox, fila por cursor `(created_at, id)` com no máximo 50, decisão por `UPDATE` condicional, status da conversa na mesma transação
-- [ ] 5.3 `approvals/service.py`: `ApprovalService.request`, `get`, `pending_queue` e `decide` (motivo com `strip`, de 1 a 500 caracteres; releitura para separar não encontrado, repetição, `approval_already_decided` e `approval_version_stale`); auditoria sem o texto do motivo; eventos de log
-- [ ] 5.4 Unitários com fakes de cada ramo do serviço, incluindo motivo vazio, só com espaços e com 501 caracteres
-- [ ] 5.5 Integração, corridas: dois revisores com decisões opostas juntos → 1 decisão e 1 `approval_already_decided`; dois revisores com a mesma decisão juntos → os dois recebem o estado aprovado e há 1 auditoria; criação repetida junta → 1 pedido; duas propostas diferentes juntas na mesma conversa → 1 pendente e 1 `approval_already_pending`
-- [ ] 5.6 Integração, escopo e fila: revisor de outra sandbox → `NotFoundError`; cliente lê só a da própria conversa; 60 pendentes → páginas de 50 e 10 sem repetir nem pular; `EXPLAIN` da fila usa o índice parcial; status da conversa: `open` → `awaiting_approval` → `open`
+- [x] 5.1 `approvals/models.py` e `ports.py`: `ApprovalRequest`, `ApprovalStatus`, `Decision`, `FraudAssessment` (nota entre 0 e 1, versão, fatores), portas
+- [x] 5.2 `approvals/repository.py`: criar com `ON CONFLICT` e tradução do índice parcial, `get` com escopo de cliente ou sandbox, fila por cursor `(created_at, id)` com no máximo 50, decisão por `UPDATE` condicional, status da conversa na mesma transação
+- [x] 5.3 `approvals/service.py`: `ApprovalService.request`, `get`, `pending_queue` e `decide` (motivo com `strip`, de 1 a 500 caracteres; releitura para separar não encontrado, repetição, `approval_already_decided` e `approval_version_stale`); auditoria sem o texto do motivo; eventos de log
+- [x] 5.4 Unitários com fakes de cada ramo do serviço, incluindo motivo vazio, só com espaços e com 501 caracteres
+- [x] 5.5 Integração, corridas: dois revisores com decisões opostas juntos → 1 decisão e 1 `approval_already_decided`; dois revisores com a mesma decisão juntos → os dois recebem o estado aprovado e há 1 auditoria; criação repetida junta → 1 pedido; duas propostas diferentes juntas na mesma conversa → 1 pendente e 1 `approval_already_pending`
+- [x] 5.6 Integração, escopo e fila: revisor de outra sandbox → `NotFoundError`; cliente lê só a da própria conversa; 60 pendentes → páginas de 50 e 10 sem repetir nem pular; `EXPLAIN` da fila usa o índice parcial; status da conversa: `open` → `awaiting_approval` → `open`
 
 ## 6. Transferências
 
-- [ ] 6.1 `HandoffSummary` (intenção, fatos, ações feitas, com limites) e `Priority`; `find_personal_data` em cada texto; marcadores do mascaramento aceitos
-- [ ] 6.2 Repositório e `HandoffService`: criar com `ON CONFLICT` no índice parcial, fila por `(priority_rank DESC, created_at, id)`, assumir com `UPDATE` condicional e releitura; conversa `transferred`; auditoria e eventos de log
-- [ ] 6.3 Unitários: resumo com CPF, telefone e e-mail recusado; limites de tamanho; ramos do assumir
-- [ ] 6.4 Integração: criação repetida junta → 1 transferência; dois revisores assumindo juntos → 1 responsável e 1 `handoff_already_assigned`; fila com alta antes de normal, paginada; `EXPLAIN` da fila; outra sandbox → `NotFoundError`
+- [x] 6.1 `HandoffSummary` (intenção, fatos, ações feitas, com limites) e `Priority`; `find_personal_data` em cada texto; marcadores do mascaramento aceitos
+- [x] 6.2 Repositório e `HandoffService`: criar com `ON CONFLICT` no índice parcial, fila por `(priority_rank DESC, created_at, id)`, assumir com `UPDATE` condicional e releitura; conversa `transferred`; auditoria e eventos de log
+- [x] 6.3 Unitários: resumo com CPF, telefone e e-mail recusado; limites de tamanho; ramos do assumir
+- [x] 6.4 Integração: criação repetida junta → 1 transferência; dois revisores assumindo juntos → 1 responsável e 1 `handoff_already_assigned`; fila com alta antes de normal, paginada; `EXPLAIN` da fila; outra sandbox → `NotFoundError`
 
 ## 7. Fluxos do lado da escrita
 
-- [ ] 7.1 Integração com os estados finais de `fluxos-do-agente.md`, chamando os serviços na ordem que o grafo vai chamar: F1 (1 reembolso de R$ 8,00, 1 auditoria, nenhuma aprovação), F2a (pedido → aprovado → executado duas vezes → 1 reembolso de R$ 186,00 e a auditoria do revisor), F2b (recusado → nenhum reembolso e a auditoria da recusa), F7 (R$ 74,00 negado, R$ 12,00 executado), F5 (1 transferência de prioridade alta, nenhuma ação)
+- [x] 7.1 Integração com os estados finais de `fluxos-do-agente.md`, chamando os serviços na ordem que o grafo vai chamar: F1 (1 reembolso de R$ 8,00, 1 auditoria, nenhuma aprovação), F2a (pedido → aprovado → executado duas vezes → 1 reembolso de R$ 186,00 e a auditoria do revisor), F2b (recusado → nenhum reembolso e a auditoria da recusa), F7 (R$ 74,00 negado, R$ 12,00 executado), F5 (1 transferência de prioridade alta, nenhuma ação)
 
 ## 8. Documentação
 
-- [ ] 8.1 `docs/modelo-dominio.md`: colunas, restrições e status de `conversations`, `actions`, `approval_requests` e `handoffs`
-- [ ] 8.2 `docs/robustez.md`: a trava do cliente na corrida dos reembolsos, a linha "automáticos em pedidos diferentes" e a ordem das travas (cliente → pedido; linha própria → conversa)
-- [ ] 8.3 `docs/decisoes-arquitetura.md`: chave derivada da proposta, trava do cliente, FK composta para a aprovação aprovada, aprovação imutável por trigger, aprovação cobre motivos novos; `docs/arquitetura.md`: o contrato entre `approvals` e `actions` passando pelo agente
+- [x] 8.1 `docs/modelo-dominio.md`: colunas, restrições e status de `conversations`, `actions`, `approval_requests` e `handoffs`
+- [x] 8.2 `docs/robustez.md`: a trava do cliente na corrida dos reembolsos, a linha "automáticos em pedidos diferentes" e a ordem das travas (cliente → pedido; linha própria → conversa)
+- [x] 8.3 `docs/decisoes-arquitetura.md`: chave derivada da proposta, trava do cliente, FK composta para a aprovação aprovada, aprovação imutável por trigger, aprovação cobre motivos novos; `docs/arquitetura.md`: o contrato entre `approvals` e `actions` passando pelo agente
 - [x] 8.4 `docs/roadmap.md`: a tabela `conversations` mínima e a trava do cliente no escopo da change 11
-- [ ] 8.5 README: change 11 no status e os números de testes atualizados
+- [x] 8.5 README: change 11 no status e os números de testes atualizados
 
 ## 9. Verificação
 
-- [ ] 9.1 `uv run ruff format --check .`
-- [ ] 9.2 `uv run ruff check .`
-- [ ] 9.3 `uv run mypy`
-- [ ] 9.4 `uv run lint-imports`
-- [ ] 9.5 `uv run pytest` (cobertura mínima de 85% e 100% dos ramos em `policy`, `privacy` e `actions`)
-- [ ] 9.6 `uv run pytest -m integration --no-cov`
-- [ ] 9.7 `openspec validate acoes-e-aprovacoes --strict`
+- [x] 9.1 `uv run ruff format --check .`
+- [x] 9.2 `uv run ruff check .`
+- [x] 9.3 `uv run mypy`
+- [x] 9.4 `uv run lint-imports`
+- [x] 9.5 `uv run pytest` (cobertura mínima de 85% e 100% dos ramos em `policy`, `privacy` e `actions`)
+- [x] 9.6 `uv run pytest -m integration --no-cov`
+- [x] 9.7 `openspec validate acoes-e-aprovacoes --strict`
