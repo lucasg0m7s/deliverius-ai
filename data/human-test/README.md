@@ -6,6 +6,13 @@ automático produziu. Quanto mais natural e variado o texto, mais útil ele é.
 
 Meta: cerca de 150 mensagens, com ao menos 10 de cada intenção.
 
+> **O arquivo atual (`human_test.csv`) não foi escrito por pessoas.** Por decisão do autor, a versão usada na
+> pesquisa de intenção tem 165 mensagens de **clientes simulados**: três agentes do Claude, cada um numa persona
+> (coluna `notes`), escreveram 5 mensagens por intenção sem ver os dados do projeto; na revisão, uma mudou de
+> rótulo (anotado em `notes`). Por isso o relatório o chama de
+> teste de clientes simulados (`docs/pesquisa-intencao.md`). Mensagens escritas por pessoas, no formato abaixo,
+> podem formar uma versão futura do teste.
+
 ## Formato do arquivo
 
 CSV em UTF-8, uma mensagem por linha, com cabeçalho. Abra o `template.csv` (só o cabeçalho) e preencha.
