@@ -1,0 +1,72 @@
+# Intent classifier research. Written before any run (design D2 and D3): hyperparameters,
+# temperature and router threshold use the validation set only; the three test sets are read
+# once, by `evaluate`, with the four candidates frozen.
+seed: 20261110
+
+human_test:
+  path: data/human-test/human_test.csv
+  min_per_intent: 10
+
+# The choice rule (design D2).
+rule:
+  # Over the three test sets together (about 105 sensitive messages).
+  min_sensitive_recall: 0.95
+  max_p95_ms: 100.0
+  bootstrap_resamples: 2000
+  confidence_level: 0.95
+
+calibration:
+  ece_bins: 15
+  # Bounded scalar search of the temperature, by log-likelihood on validation.
+  temperature_bounds: [0.05, 20.0]
+
+router:
+  # The smallest confidence threshold whose error among the covered messages stays at or below this.
+  max_error: 0.05
+
+latency:
+  warmup_messages: 20
+  intra_op_threads: 1
+
+tfidf:
+  word_ngrams: [1, 2]
+  char_ngrams: [3, 5]
+  min_df: 2
+  C_grid: [0.3, 1.0, 3.0, 10.0]
+  max_iter: 5000
+
+e5:
+  C_grid: [0.3, 1.0, 3.0, 10.0]
+  max_iter: 5000
+
+llm_baseline:
+  prompt_version: 1
+  examples_per_intent: 2
+  # Sample of each synthetic test set (and of validation, to check the prompt), per intent.
+  sample_per_intent: 20
+  cache_path: .cache/intent-llm/responses.sqlite
+  latency_path: .cache/intent-llm/latency.json
+
+finetune:
+  base_model: neuralmind/bert-base-portuguese-cased
+  base_revision: 94d69c95f98f7d5b2a8700c420230ae10def0baa
+  learning_rates: [2.0e-5, 3.0e-5, 5.0e-5]
+  search_seed: 20261110
+  seeds: [20261110, 20261111, 20261112]
+  max_epochs: 4
+  patience: 1
+  batch_size: 16
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  short_max_length: 128
+  long_max_length: 256
+  # Above this share of validation messages longer than `short_max_length` tokens, use the long one.
+  long_share_threshold: 0.05
+
+export:
+  logits_tolerance: 1.0e-4
+  min_argmax_agreement: 0.99
+
+model:
+  repository: G0m7s/deliverius-intent
+  version: 1.0.0
