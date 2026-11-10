@@ -217,7 +217,7 @@ treino do antifraude, porque entregariam o rótulo.
 | --- | --- | --- | --- |
 | Mensagens rotuladas (treino, validação e teste) | ≈ 3.000 (297 cenários × 10 variações) | Classificador | **Por cenário**, 70/15/15, estratificado por intenção: variações do mesmo cenário nunca ficam em lados diferentes, senão o teste mede memória. A parte de teste é o "teste sintético do mesmo gerador" de `ml-e-avaliacao.md` |
 | Teste sintético de outro gerador | ≈ 550 (55 cenários) | Classificador | Gerado por um modelo de outra família (Groq, papel `datagen_holdout`), com prompt próprio e cenários disjuntos dos do conjunto principal |
-| **Teste escrito por pessoas** | ≈ 150 | Classificador | Nunca usado em treino nem em ajuste |
+| **Teste de clientes simulados** (formato de `data/human-test/`) | 165 | Classificador | Nunca usado em treino nem em ajuste |
 | Histórico de pedidos e reclamações | ≈ 20.000 pedidos | Antifraude | **Por tempo**: treino nos primeiros meses, teste no último |
 | Pares pergunta → trecho da política | ≈ 60 | Avaliação do RAG | — |
 | Cenários de ponta a ponta | ≈ 150 gerados | Evals | O tamanho rodado por vez é definido no tema 7, por causa da cota |

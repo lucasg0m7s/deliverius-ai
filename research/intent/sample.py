@@ -1,8 +1,9 @@
 """The fixed sample of the LLM baseline: the daily quota cannot pay for every test message.
 
-Approach 4 runs on the whole human test and on `per_intent` messages of each intent from each
-synthetic set (design D5). The draw depends only on the seed, the set and the intent, so the same
-ids come out on every run; approaches 1 to 3 are measured on the same sample for the comparison.
+Approach 4 runs on the whole simulated-customer test and on `per_intent` messages of each intent
+from each synthetic set (design D5). The draw depends only on the seed, the set and the intent,
+so the same ids come out on every run; approaches 1 to 3 are measured on the same sample for
+the comparison.
 """
 
 import hashlib

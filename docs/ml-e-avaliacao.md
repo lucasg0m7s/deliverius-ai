@@ -53,8 +53,8 @@ aplica antes de `classify_intent` (uma mensagem é a primeira da sua conversa). 
 serviço e mantém documento, telefone, e-mail e endereço fora do LLM da abordagem 4. Nomes próprios não são
 mascarados, na pesquisa como na aplicação (limite medido em `seguranca.md`).
 
-**Métricas, sempre nos três conjuntos de teste** (sintético do mesmo gerador, sintético de outro gerador, escrito
-por pessoas), lidos uma única vez, na avaliação final, com os candidatos congelados:
+**Métricas, sempre nos três conjuntos de teste** (sintético do mesmo gerador, sintético de outro gerador e de clientes
+simulados por um terceiro autor), lidos uma única vez, na avaliação final, com os candidatos congelados:
 
 - **F1 macro** (principal), com intervalo de confiança de 95% por bootstrap;
 - **recall da classe `sensitive`**, porque errar uma alergia é o pior erro possível;
@@ -66,15 +66,16 @@ por pessoas), lidos uma única vez, na avaliação final, com os candidatos cong
 **Regra de escolha** (escrita antes dos resultados; detalhada na change `pesquisa-intencao`):
 
 1. **Elegível** é a abordagem com recall de `sensitive` ≥ 0,95 **nos três testes somados** (cerca de 105 mensagens
-   sensíveis; só o teste humano teria cerca de 14, e um erro derrubaria a regra) e p95 ≤ 100 ms em CPU.
-2. Entre as elegíveis, a **melhor** é a de maior F1 macro no **teste escrito por pessoas**.
+   sensíveis; só o de clientes simulados teria cerca de 15, e um erro derrubaria a regra) e p95 ≤ 100 ms em CPU.
+2. Entre as elegíveis, a **melhor** é a de maior F1 macro no **teste de clientes simulados** (até 2026-11-10, previsto como escrito por
+   pessoas; a troca foi feita antes de qualquer resultado, `pesquisa-intencao.md`).
 3. Para cada outra elegível, o intervalo de 95% da diferença de F1 (melhor − outra) por *bootstrap* pareado e
-   estratificado no teste humano (2.000 reamostragens). Intervalo que contém zero é empate; vence a mais rápida entre a
+   estratificado nesse teste (2.000 reamostragens). Intervalo que contém zero é empate; vence a mais rápida entre a
    melhor e as que empatam com ela, e o tamanho desempata a latência. Dois intervalos que se sobrepõem não dizem que a
    diferença é nula; a diferença pareada usa os mesmos exemplos nos dois modelos.
 4. Nenhuma elegível: nada é publicado, e a decisão volta ao autor.
 
-**A abordagem 4 roda numa amostra:** o teste humano inteiro e 20 mensagens por intenção de cada teste sintético
+**A abordagem 4 roda numa amostra:** o teste de clientes simulados inteiro e 20 mensagens por intenção de cada teste sintético
 (sorteio estratificado com semente), por causa da cota diária do Gemini. As outras abordagens também são medidas nessa
 amostra, lado a lado. O papel `intent_baseline` não tem modelo de reserva, para não misturar dois modelos na mesma
 medida, e o cache de respostas torna a execução retomável e repetível sem gastar cota.

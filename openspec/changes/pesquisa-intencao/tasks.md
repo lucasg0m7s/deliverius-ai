@@ -43,7 +43,7 @@
 
 ## 8. Avaliação final (uma vez)
 
-- [ ] 8.1 **Depende do autor:** teste humano escrito, `datagen validate-human` sem problemas, arquivo no git
+- [x] 8.1 **Depende do autor:** teste humano escrito, `datagen validate-human` sem problemas, arquivo no git. **Mudou em 2026-11-10, antes de qualquer resultado:** por decisão do autor, o arquivo tem 165 mensagens de clientes simulados (três agentes do Claude em personas, 5 por intenção cada), revisadas (uma mudou de rótulo); o relatório o chama de teste de clientes simulados e diz que nenhuma pessoa o escreveu
 - [x] 8.2 `evaluate.py`: os quatro candidatos congelados, uma mensagem por vez, 1 thread de intra-op, 20 de aquecimento; F1 com IC, recall de `sensitive`, ECE, p50/p95, cobertura e erro com o limiar, custo por mil, tamanho, nos três testes e na amostra; matriz de confusão e curvas; aplica `choice.py`; registra tudo numa execução-mãe do MLflow com o SHA-256 do teste humano; teste do comando com candidatos falsos
 - [ ] 8.3 Rodar a avaliação final (a abordagem 4 pode levar dois dias, retomando pelo cache) e registrar o vencedor
 - [ ] 8.4 Se o vencedor for a abordagem 1: `portable.py` em numpy lê `tfidf.json` e `logistic.json` e bate com o scikit-learn até 1e-9 nas probabilidades da validação (teste); se for a 2: o mesmo para `logistic.json` sobre os embeddings

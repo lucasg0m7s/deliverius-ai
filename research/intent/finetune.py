@@ -10,7 +10,8 @@ Two commands:
 Each run trains up to `max_epochs`, keeps the epoch with the best validation macro F1 (early
 stopping with patience 1) and writes a folder with the weights in safetensors, `config.json`,
 `tokenizer.json`, `epochs.json` and `result.json`. Only training and validation are read; the
-human test never goes to Kaggle. Export, calibration and evaluation run locally (`export.py`).
+simulated-customer test is never read here. Export, calibration and evaluation run locally
+(`export.py`).
 
 The pure parts (label maps, the 128-or-256 rule, the run settings) import no torch and run in CI;
 torch and transformers are imported inside the training function, from the `finetune` group.

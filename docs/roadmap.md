@@ -20,7 +20,7 @@ na proposal.
 | 4 | `mascaramento-dados` | F1 | 5–6/11 | 1 | R22 |
 | 5 | `camada-llm` | F1 | 6–7/11 | 2 | R03, R13, R21 |
 | 6 | `gerador-dados` | F1 | 7–9/11 | 2, 3, 5 | R05, R07 |
-| 7 | `pesquisa-intencao` | F2 Modelos e busca | 9–12/11 | 6 e o teste escrito por pessoas | R04, R05, R06, R07, R08, R09, R24 |
+| 7 | `pesquisa-intencao` | F2 Modelos e busca | 9–12/11 | 6 e o teste de clientes simulados | R04, R05, R06, R07, R08, R09, R24 |
 | 8 | `busca-politicas` | F2 | 10–11/11 | 2, 3 | R08, R19 |
 | 9 | `classificador-intencao` | F2 | 12/11 | 7 | R03 |
 | 10 | `antifraude-reembolso` | F2 | 12–14/11 | 6 | R03, R04, R05, R06, R07, R24 |
@@ -72,7 +72,7 @@ flowchart LR
 
 O caminho crítico é 1 → 2 → 3 → 6 → 10 → 12 → 13 → 15 → 17, com 7 → 9 correndo ao lado até a 13. Até a change 12,
 ele passava por 7 → 9; a porta do classificador e a rede de palavras-chave vieram para a 12, para o agente não esperar
-o teste escrito por pessoas e o treino na GPU (`decisoes-arquitetura.md`). A `busca-politicas` (8) e o
+o teste final e o treino do BERTimbau (`decisoes-arquitetura.md`). A `busca-politicas` (8) e o
 `mascaramento-dados` (4) ficam fora dele: são feitas nas esperas, como enquanto o BERTimbau treina no Kaggle.
 
 ## O que vale para toda change
@@ -232,9 +232,9 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
   Detalhado na proposta:
   - a entrada de todo modelo é a saída de `privacy.mask_text`, como na aplicação;
   - a regra de escolha usa o recall de `sensitive` nos três testes somados e desempata por *bootstrap* pareado da
-    diferença de F1 no teste humano; sem candidato elegível, nada é publicado;
+    diferença de F1 no teste de clientes simulados; sem candidato elegível, nada é publicado;
   - os três testes são lidos uma vez; hiperparâmetros, temperatura e limiar usam só a validação;
-  - a abordagem 4 roda numa amostra (o teste humano inteiro e 20 por intenção de cada teste sintético), com o papel
+  - a abordagem 4 roda numa amostra (o teste de clientes simulados inteiro e 20 por intenção de cada teste sintético), com o papel
     `intent_baseline`, sem reserva, retomável pelo cache;
   - grupo `finetune` (torch) fora do `research` e do CI; int8 com a configuração AVX2;
   - a fixação do dataset e o envio ao Hub viram peças comuns de `research/`;
@@ -274,7 +274,7 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
     referência em numpy de `research/intent/portable.py` (TF-IDF) ou `logistic.json` sobre o e5 já fixado (e5).
     Só o adaptador do vencedor é construído, como na change 10;
   - o `manifest.json` publicado declara o contrato de entrada (`input: privacy.mask_text`), os rótulos em ordem, a
-    temperatura, o limiar, as métricas por conjunto, o SHA-256 do teste humano e de cada arquivo; o adaptador
+    temperatura, o limiar, as métricas por conjunto, o SHA-256 do teste de clientes simulados e de cada arquivo; o adaptador
     confere o contrato e os rótulos antes de carregar;
   - a carga de artefatos do Hugging Face com revisão fixa, que **nasceu na change 10** (`deliverius.artifacts`) e é
     reaproveitada aqui, com a conferência do `manifest.json` como no antifraude;
@@ -463,7 +463,7 @@ Em cada marco, se a change prevista não estiver arquivada, corta-se nesta ordem
 5. a suíte núcleo cai de 30 × 3 para 20 × 3.
 
 **Não se corta:** o motor de política, a idempotência e a aprovação, o mascaramento, o caminho sensível sem LLM,
-os evals de segurança e o teste escrito por pessoas. São o que dá sentido aos números.
+os evals de segurança e o teste de outro autor (clientes simulados). São o que dá sentido aos números.
 
 ## Extras (21 a 30/11)
 
@@ -549,7 +549,7 @@ Front em React ou Next com design system, consumindo a mesma API. Telas já pens
 | --- | --- | --- |
 | Conferir o modelo Flash-Lite e a cota no AI Studio | 6/11 | `camada-llm` |
 | Criar a chave do Groq e ativar a retenção zero | 6/11 | `camada-llm`, `gerador-dados` |
-| Escrever as cerca de 150 mensagens do teste humano (com ajuda de outras pessoas) | 10/11 | `pesquisa-intencao` |
+| Teste final da intenção: 165 mensagens de clientes simulados por agentes, revisadas (decisão do autor; mensagens de pessoas ficam para uma versão futura) | 10/11 | `pesquisa-intencao` |
 | Rotular 60 respostas do agente para calibrar o juiz | 19/11 | `juiz-calibrado` |
 | Confirmar que dá para criar um Space Docker gratuito | 20/11 | `deploy-demo` |
 

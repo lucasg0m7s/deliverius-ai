@@ -2,9 +2,9 @@
 
 1. Eligible: recall of `sensitive` >= the floor over the three test sets together, and p95
    latency <= the ceiling, in CPU.
-2. Best: the eligible approach with the highest macro F1 on the test written by people.
+2. Best: the eligible approach with the highest macro F1 on the simulated-customer test.
 3. For every other eligible one, the paired, stratified bootstrap interval of F1(best) - F1(other)
-   on the human test. An interval holding zero is a tie. The fastest (lowest p95) of the best and
+   on that test. An interval holding zero is a tie. The fastest (lowest p95) of the best and
    its ties wins; the size on disk breaks a latency tie.
 4. Nothing eligible: no winner. Nothing is published and the decision goes back to the author.
 """

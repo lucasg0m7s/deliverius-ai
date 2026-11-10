@@ -58,7 +58,7 @@ não expressam a intenção do rótulo.
 - personas com gíria repetem "mano" mais do que o natural;
 - variações de um mesmo cenário às vezes repetem a mesma estrutura com outras palavras.
 
-Por isso o número que decide o classificador é o do teste escrito por pessoas (`ml-e-avaliacao.md`, seção 1.3), e o
+Por isso o número que decide o classificador é o do teste de clientes simulados, escrito por um terceiro autor (`ml-e-avaliacao.md`, seção 1.3), e o
 teste de outro gerador mede quanto o modelo decorou o estilo do Gemini.
 
 ## Reprodutibilidade

@@ -1,7 +1,7 @@
 """The final evaluation, run once with the four candidates frozen (design D3, D6 and D11).
 
 `python -m research.intent.evaluate` reads the three test sets for the first time: the synthetic
-test, the holdout of another generator and the test written by people (validated, hashed and
+test, the holdout of another generator and the simulated-customer test (validated, hashed and
 checked against training and validation). Approaches 1 to 3 score every test message one at a
 time, in CPU, with one intra-op thread, after 20 warm-up messages; the LLM answers its fixed
 sample (resumable through the cache; a spent budget exits with 2). Every approach is also measured

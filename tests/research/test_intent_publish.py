@@ -106,6 +106,7 @@ def test_the_card_states_the_synthetic_data_the_contract_and_the_rule(
     card = (folder / "README.md").read_text(encoding="utf-8")
 
     assert "Synthetic data only" in card
+    assert "no person wrote any test" in card
     assert "mask_text" in card
     assert "paired bootstrap" in card
     assert "no pickle" in card

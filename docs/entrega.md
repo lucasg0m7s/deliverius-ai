@@ -116,7 +116,7 @@ Quem chega ao projeto lê o README antes do código. Ordem:
    - recall dos casos sensíveis;
    - custo por mil conversas;
    - p95;
-   - F1 do classificador no teste humano;
+   - F1 do classificador no teste de clientes simulados;
    - PR-AUC do antifraude;
    - recall@3 da busca.
 3. **Diagrama da arquitetura** e as três decisões centrais em uma linha cada: o LLM só lê e propõe; política em

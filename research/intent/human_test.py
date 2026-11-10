@@ -1,4 +1,4 @@
-"""The test set written by people, read only after `validate_human_test` passes.
+"""The simulated-customer test (the `data/human-test/` format), read after `validate_human_test`.
 
 The file is outside data: its size, rows and personal data are checked first, and its SHA-256
 goes to MLflow, the report and the manifest, so a result always names the exact file. It is also
