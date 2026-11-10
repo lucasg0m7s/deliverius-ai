@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     llm_datagen_model: ModelSetting = ModelRef(LlmProvider.GEMINI, "gemini-3.5-flash-lite")
     # Another provider than `datagen` on purpose: the holdout test measures style memorisation.
     llm_datagen_holdout_model: ModelSetting = ModelRef(LlmProvider.GROQ, "openai/gpt-oss-120b")
+    # The LLM baseline of the intent research. No fallback on purpose: an answer from another
+    # model in the middle of the run would mix two models in one measurement.
+    llm_intent_baseline_model: ModelSetting = ModelRef(LlmProvider.GEMINI, "gemini-3.5-flash-lite")
 
     # Optional: the API starts without them. Only the providers a role uses are required, and
     # that check happens when the LLM runtime is built, not here.

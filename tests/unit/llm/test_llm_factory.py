@@ -251,6 +251,22 @@ def test_the_holdout_role_resolves_to_its_own_model() -> None:
     assert isinstance(models.primary, ChatOpenAI)
 
 
+@pytest.mark.parametrize("role", list(ModelRole))
+def test_every_role_resolves_to_a_main_model(role: ModelRole) -> None:
+    assert runtime_for({}).models_for(role).role is role
+
+
+def test_the_intent_baseline_resolves_to_its_own_model_without_a_fallback() -> None:
+    runtime = runtime_for({"llm_intent_baseline_model": "groq:openai/gpt-oss-20b"})
+
+    models = runtime.models_for(ModelRole.INTENT_BASELINE)
+
+    assert models.role is ModelRole.INTENT_BASELINE
+    assert models.primary_ref == ModelRef(LlmProvider.GROQ, "openai/gpt-oss-20b")
+    assert models.fallback is None
+    assert models.fallback_ref is None
+
+
 def test_a_key_is_not_required_for_ollama() -> None:
     settings = settings_with(
         groq_api_key=None,
@@ -263,6 +279,7 @@ def test_a_key_is_not_required_for_ollama() -> None:
         llm_judge_model="ollama:a",
         llm_datagen_model="ollama:a",
         llm_datagen_holdout_model="ollama:a",
+        llm_intent_baseline_model="ollama:a",
     )
 
     LlmRuntime(settings, InMemoryLlmUsageStore(), FixedClock(NOW))

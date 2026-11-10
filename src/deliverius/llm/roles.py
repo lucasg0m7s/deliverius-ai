@@ -13,6 +13,7 @@ class ModelRole(StrEnum):
     JUDGE = "judge"
     DATAGEN = "datagen"
     DATAGEN_HOLDOUT = "datagen_holdout"
+    INTENT_BASELINE = "intent_baseline"
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +65,14 @@ ROLE_CONFIGS: Mapping[ModelRole, RoleConfig] = MappingProxyType(
             total_deadline_seconds=90,
             max_output_tokens=2_048,
             temperature=0.9,
+        ),
+        # Research only: the "just ask the LLM" baseline of the intent study. One intent and a
+        # confidence per call, deterministic so a cached answer is the answer.
+        ModelRole.INTENT_BASELINE: RoleConfig(
+            attempt_timeout_seconds=10,
+            total_deadline_seconds=25,
+            max_output_tokens=128,
+            temperature=0.0,
         ),
     }
 )

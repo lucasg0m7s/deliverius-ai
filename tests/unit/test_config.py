@@ -187,6 +187,24 @@ def test_the_holdout_generator_defaults_to_another_provider_than_the_main_one() 
     assert settings.llm_datagen_holdout_model.provider is not settings.llm_datagen_model.provider
 
 
+def test_the_intent_baseline_defaults_to_gemini_flash_lite() -> None:
+    settings = build_settings()
+
+    assert settings.llm_intent_baseline_model == ModelRef(
+        LlmProvider.GEMINI, "gemini-3.5-flash-lite"
+    )
+
+
+def test_the_intent_baseline_model_comes_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_INTENT_BASELINE_MODEL", "groq:openai/gpt-oss-20b")
+
+    assert build_settings().llm_intent_baseline_model == ModelRef(
+        LlmProvider.GROQ, "openai/gpt-oss-20b"
+    )
+
+
 def test_the_hugging_face_token_is_optional_and_a_blank_one_means_not_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

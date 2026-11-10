@@ -50,6 +50,14 @@ def test_the_holdout_role_is_configured_like_the_main_generation_role() -> None:
     assert ROLE_CONFIGS[ModelRole.DATAGEN_HOLDOUT] == ROLE_CONFIGS[ModelRole.DATAGEN]
 
 
+def test_the_intent_baseline_is_deterministic_short_and_has_the_writer_deadlines() -> None:
+    config = ROLE_CONFIGS[ModelRole.INTENT_BASELINE]
+
+    assert (config.attempt_timeout_seconds, config.total_deadline_seconds) == (10, 25)
+    assert config.max_output_tokens == 128
+    assert config.temperature == 0.0
+
+
 def test_judge_is_deterministic_and_the_simulated_customer_is_varied() -> None:
     assert ROLE_CONFIGS[ModelRole.JUDGE].temperature == 0.0
     assert ROLE_CONFIGS[ModelRole.CUSTOMER_SIM].temperature == 0.9

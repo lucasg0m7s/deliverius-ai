@@ -290,20 +290,18 @@ class LlmRuntime:
                 return None
 
     def _references(self, role: ModelRole) -> tuple[ModelRef, ModelRef | None]:
+        """Main model and fallback. Only the agent and the writer have a fallback."""
         settings = self._settings
-        match role:
-            case ModelRole.AGENT:
-                return settings.llm_agent_model, settings.llm_agent_fallback
-            case ModelRole.WRITER:
-                return settings.llm_writer_model, settings.llm_writer_fallback
-            case ModelRole.CUSTOMER_SIM:
-                return settings.llm_customer_sim_model, None
-            case ModelRole.JUDGE:
-                return settings.llm_judge_model, None
-            case ModelRole.DATAGEN:
-                return settings.llm_datagen_model, None
-            case ModelRole.DATAGEN_HOLDOUT:
-                return settings.llm_datagen_holdout_model, None
+        references: dict[ModelRole, tuple[ModelRef, ModelRef | None]] = {
+            ModelRole.AGENT: (settings.llm_agent_model, settings.llm_agent_fallback),
+            ModelRole.WRITER: (settings.llm_writer_model, settings.llm_writer_fallback),
+            ModelRole.CUSTOMER_SIM: (settings.llm_customer_sim_model, None),
+            ModelRole.JUDGE: (settings.llm_judge_model, None),
+            ModelRole.DATAGEN: (settings.llm_datagen_model, None),
+            ModelRole.DATAGEN_HOLDOUT: (settings.llm_datagen_holdout_model, None),
+            ModelRole.INTENT_BASELINE: (settings.llm_intent_baseline_model, None),
+        }
+        return references[role]
 
     def _require_keys(self, roles: tuple[ModelRole, ...]) -> None:
         missing: dict[str, list[str]] = {}
