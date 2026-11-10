@@ -59,6 +59,15 @@ research = [
     "shap>=0.54.1",
     "types-pyyaml>=6.0.12.20261103",
 ]
+# Fine-tuning of the intent model: runs on a Kaggle GPU; locally only for the ONNX export. Not in CI.
+finetune = [
+    "accelerate>=1.15.0",
+    "datasets>=5.1.0",
+    "onnx>=1.23.2",
+    "onnxscript>=0.7.2",
+    "torch>=2.15.0",
+    "transformers>=5.22.2",
+]
 
 [tool.uv]
 default-groups = ["dev", "datagen"]
@@ -99,13 +108,31 @@ plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 # onnxruntime ships neither type stubs nor a py.typed marker; the embedder wraps it behind a Protocol.
-module = ["onnxruntime"]
+module = ["onnxruntime", "onnxruntime.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 # Research only (the `research` group): scikit-learn and shap ship neither stubs nor py.typed.
-module = ["sklearn", "sklearn.*", "shap"]
+module = ["sklearn", "sklearn.*", "shap", "scipy", "scipy.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The `finetune` group is not installed in CI: skipping these modules keeps mypy the same with and
+# without it, so `research/intent/finetune.py` and `export.py` see them as `Any`.
+module = [
+    "torch",
+    "torch.*",
+    "transformers",
+    "transformers.*",
+    "datasets",
+    "datasets.*",
+    "accelerate",
+    "accelerate.*",
+    "onnx",
+    "onnx.*",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -114,10 +141,11 @@ testpaths = ["tests"]
 pythonpath = ["tests", "."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "-m 'not integration and not llm' --cov=src/deliverius --cov-report=term-missing --cov-fail-under=85"
+addopts = "-m 'not integration and not llm and not finetune' --cov=src/deliverius --cov-report=term-missing --cov-fail-under=85"
 markers = [
     "integration: needs Docker (Testcontainers starts a throwaway Postgres with pgvector)",
     "llm: calls a real LLM provider (cost and rate limits)",
+    "finetune: needs the `finetune` group (torch, transformers), which CI does not install",
 ]
 
 [tool.coverage.run]
@@ -314,9 +342,10 @@ forbidden_modules = ["onnxruntime", "tokenizers"]
 allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
-name = "research libraries never reach the application"
+name = "research code and libraries never reach the application"
 type = "forbidden"
-# The `research` group is not in the image: an import would only fail in production.
+# The `research` and `finetune` groups are not in the image: an import would only fail in
+# production. `research` is the scripts' package, which depends on the application, never the reverse.
 source_modules = [
     "deliverius.actions",
     "deliverius.api",
@@ -335,5 +364,19 @@ source_modules = [
     "deliverius.retrieval",
     "deliverius.shared",
 ]
-forbidden_modules = ["lightgbm", "sklearn", "pandas", "shap", "mlflow", "matplotlib", "yaml"]
+forbidden_modules = [
+    "lightgbm",
+    "sklearn",
+    "pandas",
+    "shap",
+    "mlflow",
+    "matplotlib",
+    "yaml",
+    "torch",
+    "transformers",
+    "datasets",
+    "accelerate",
+    "onnx",
+    "research",
+]
 allow_indirect_imports = true
