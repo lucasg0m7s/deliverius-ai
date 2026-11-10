@@ -25,8 +25,8 @@ na proposal.
 | 9 | `classificador-intencao` | F2 | 12/11 | 7 | R03 |
 | 10 | `antifraude-reembolso` | F2 | 12–14/11 | 6 | R03, R04, R05, R06, R07, R24 |
 | 11 | `acoes-e-aprovacoes` | F3 Agente e API | 14/11 | 2, 3 | R12, R22 |
-| 12 | `agente-atendimento` | F3 | 15–16/11 | 4, 5, 8, 9, 10, 11 | R12, R13, R14 |
-| 13 | `api-atendimento` | F3 | 17/11 | 12 | R02, R22 |
+| 12 | `agente-atendimento` | F3 | 15–16/11 | 4, 5, 8, 10, 11 | R12, R13, R14 |
+| 13 | `api-atendimento` | F3 | 17/11 | 9, 12 | R02, R22 |
 | 14 | `observabilidade` | F3 | 18/11 | 13 | R21 |
 | 15 | `evals-agente` | F4 Avaliação | 18–20/11 | 13 | R05, R13, R14, R15, R20, R22 |
 | 16 | `juiz-calibrado` | F4 | 19–20/11 | 15 e os 60 rótulos humanos | R20 |
@@ -60,17 +60,19 @@ flowchart LR
   M --> AG[12 agente-atendimento]
   L --> AG
   B --> AG
-  CI --> AG
   AF --> AG
   AA --> AG
   AG --> API[13 api-atendimento]
+  CI --> API
   API --> O[14 observabilidade]
   API --> E[15 evals-agente]
   E --> J[16 juiz-calibrado]
   E --> FN[17 fechamento-nucleo]
 ```
 
-O caminho crítico é 1 → 2 → 3 → 6 → 7 → 9 → 10 → 12 → 13 → 15 → 17. A `busca-politicas` (8) e o
+O caminho crítico é 1 → 2 → 3 → 6 → 10 → 12 → 13 → 15 → 17, com 7 → 9 correndo ao lado até a 13. Até a change 12,
+ele passava por 7 → 9; a porta do classificador e a rede de palavras-chave vieram para a 12, para o agente não esperar
+o teste escrito por pessoas e o treino na GPU (`decisoes-arquitetura.md`). A `busca-politicas` (8) e o
 `mascaramento-dados` (4) ficam fora dele: são feitas nas esperas, como enquanto o BERTimbau treina no Kaggle.
 
 ## O que vale para toda change
@@ -226,6 +228,17 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
   Todas são avaliadas pelo mesmo script, local, em CPU, nos três conjuntos de teste, e registradas no MLflow. O
   vencedor é publicado no Hugging Face com model card e `manifest.json`. O relatório fica em
   `docs/pesquisa-intencao.md`, e o notebook de treino fica público no Kaggle.
+
+  Detalhado na proposta:
+  - a entrada de todo modelo é a saída de `privacy.mask_text`, como na aplicação;
+  - a regra de escolha usa o recall de `sensitive` nos três testes somados e desempata por *bootstrap* pareado da
+    diferença de F1 no teste humano; sem candidato elegível, nada é publicado;
+  - os três testes são lidos uma vez; hiperparâmetros, temperatura e limiar usam só a validação;
+  - a abordagem 4 roda numa amostra (o teste humano inteiro e 20 por intenção de cada teste sintético), com o papel
+    `intent_baseline`, sem reserva, retomável pelo cache;
+  - grupo `finetune` (torch) fora do `research` e do CI; int8 com a configuração AVX2;
+  - a fixação do dataset e o envio ao Hub viram peças comuns de `research/`;
+  - o formato publicado segue o vencedor, sempre sem *pickle*.
 - **Fora:** LoRA (extra E5) e o uso do modelo pela aplicação (change 9).
 - **Spec:** nenhuma. É pesquisa, com proposal, design e tasks.
 - **Pronto quando:** a tabela compara F1 macro com intervalo de 95%, recall de `sensitive`, ECE, p50/p95 e custo nos
@@ -254,15 +267,22 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
 #### 9. `classificador-intencao` (12/11)
 
 - **Escopo:**
-  - `intent/`: porta `IntentClassifier`, adaptador ONNX com temperatura e a rede de segurança por palavras-chave
-    para o caminho sensível;
+  - em `intent/`, o adaptador **do vencedor da `pesquisa-intencao`** da porta `IntentClassifier`, com temperatura e
+    limiar (a porta, o enum das 11 intenções, o classificador falso e a rede de segurança por palavras-chave nasceram
+    na change 12, para o agente não esperar a pesquisa). O formato segue o vencedor, sempre sem
+    *pickle*: ONNX int8 e `tokenizer.json` (BERTimbau), `tfidf.json` e `logistic.json` com a implementação de
+    referência em numpy de `research/intent/portable.py` (TF-IDF) ou `logistic.json` sobre o e5 já fixado (e5).
+    Só o adaptador do vencedor é construído, como na change 10;
+  - o `manifest.json` publicado declara o contrato de entrada (`input: privacy.mask_text`), os rótulos em ordem, a
+    temperatura, o limiar, as métricas por conjunto, o SHA-256 do teste humano e de cada arquivo; o adaptador
+    confere o contrato e os rótulos antes de carregar;
   - a carga de artefatos do Hugging Face com revisão fixa, que **nasceu na change 10** (`deliverius.artifacts`) e é
     reaproveitada aqui, com a conferência do `manifest.json` como no antifraude;
   - `GET /ready`.
-- **Spec:** `classificacao-intencao`.
+- **Spec:** `classificacao-intencao` (delta: a change 12 criou a capability).
 - **Pronto quando:** a aplicação classifica sem torch; o `/ready` falha se o esquema não bater; o F1 e o recall de
-  `sensitive` viram porta no CI para PRs que mexem em `intent`; as palavras-chave levam ao caminho sensível mesmo
-  com o classificador falso errando.
+  `sensitive` viram porta no CI para PRs que mexem em `intent`; o `bootstrap` monta o agente com o adaptador real.
+- **Ordem:** pode vir depois da 12; precisa vir antes da 13, porque a API sobe o agente com o classificador real.
 
 #### 10. `antifraude-reembolso` (12–14/11)
 
@@ -332,13 +352,21 @@ Além do previsto, reconhece o CNPJ alfanumérico e corrigiu o texto de exceçõ
     change confere.
   - o nó `score_fraud`: lê o histórico com o `PostgresFraudContextReader`, monta o contexto com `claim_context`,
     pontua e preenche o `FraudAssessment` da aprovação; o modelo é carregado na subida (`load_fraud_model`). Uma
-    `FraudScoringError` manda o caso para revisão humana (*fail closed*), nunca para execução automática.
-- **Fora:** a API (change 13) e qualquer ferramenta que escreve, que não existe por desenho.
-- **Spec:** `agente`.
+    `FraudScoringError` manda o caso para revisão humana (*fail closed*), nunca para execução automática; os
+    motivos `fraud_review` e `fraud_unavailable` entram em `policy.ApprovalReason`.
+  - **vindo da change 9:** `intent/` com a porta `IntentClassifier`, o enum das 11 intenções (que sai de `datagen`),
+    o classificador falso e a rede de segurança por palavras-chave;
+  - as tabelas do `AsyncPostgresSaver` por migration do Alembic (o SQL da biblioteca copiado, sem `setup()` na
+    subida) e o pool próprio do `psycopg`;
+  - o prazo total do turno (60 s) e o `ask_clarification` em texto fixo, sem LLM.
+- **Fora:** a API (change 13), o adaptador do classificador vencedor (change 9) e qualquer ferramenta que escreve,
+  que não existe por desenho.
+- **Spec:** `agente` e `classificacao-intencao` (a porta e a rede; a 9 acrescenta o adaptador).
 - **Pronto quando:** os sete cenários de `fluxos-do-agente.md` passam no pytest com o LLM falso e sem rede; retomar
   duas vezes a mesma aprovação gera um só reembolso; o caminho sensível não chama nenhum LLM; com o LLM falso travando, o turno estoura o prazo e cai no modo degradado
   sem ação; o LLM falso pedindo o pedido de outro cliente recebe o pedido do contexto; uma conversa real de
-  ponta a ponta funciona com o Gemini e com o Groq (`-m llm`).
+  ponta a ponta funciona com o Gemini e com o Groq (`-m llm`). As palavras-chave levam ao caminho sensível mesmo com o
+  classificador falso errando (veio da 9 com a rede).
 
 #### 13. `api-atendimento` (17/11)
 
