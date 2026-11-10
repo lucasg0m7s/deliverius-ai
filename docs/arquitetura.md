@@ -69,8 +69,10 @@ por capacidade** (pedidos, política, antifraude, agente…). Isso é diferente 
   - O antifraude é uma regressão logística aplicada em numpy, a partir de números em JSON (coeficientes,
     padronização e os dois parâmetros do calibrador). O LightGBM foi o candidato e perdeu na regra de escolha
     (`antifraude.md`).
-  - Torch, Transformers, PEFT, scikit-learn, LightGBM, MLflow e Jupyter ficam no grupo de dependências `research`,
-    que a aplicação não instala; um contrato do import-linter proíbe importá-los em `src/`.
+  - scikit-learn, LightGBM, MLflow e matplotlib ficam no grupo de dependências `research`; torch, transformers,
+    datasets, accelerate e onnx ficam no grupo `finetune`, fora até do CI (o ajuste fino roda no Kaggle). A
+    aplicação não instala nenhum dos dois, e um contrato do import-linter proíbe importá-los em `src/`, assim como
+    importar o pacote `research`.
 
   Resultado: imagem Docker leve, início rápido e CPU gratuita do Hugging Face Spaces suficiente.
 - **A aplicação carrega os modelos como artefatos versionados:** do Hugging Face Hub com revisão fixa no código,
@@ -121,7 +123,9 @@ deliverius-ai/
 │   └── evals/                 Harness de avaliação (cliente simulado, métricas, relatório)
 │
 ├── research/                  Pesquisa e treino (scripts com YAML, `python -m research.<área>.<etapa>`). Importa `deliverius`; nunca o contrário
-│   ├── intent/
+│   ├── dataset.py, hub.py     Comuns: a fixação do dataset (`dataset.yaml`) e o envio ao Hub com ensaio, tag e retomada
+│   ├── intent/                config.yaml, dados mascarados, as quatro abordagens, métricas, regra de escolha, avaliação
+│   │                          final, exportação ONNX, publicação, o prompt do baseline e o notebook do Kaggle
 │   └── fraud/                 config.yaml, dataset, split, train, evaluate, candidate, publish e gate (porta do CI)
 ├── data/                      Só amostras pequenas e README; os datasets completos ficam no Hugging Face com versão
 ├── tests/
@@ -359,6 +363,7 @@ Cada chamada de LLM tem um **papel**. Trocar o modelo de um papel é mudar uma v
 | `judge` | Juiz de qualidade nos evals | O candidato com **maior kappa** na calibração contra rótulos humanos, de família diferente do agente | — |
 | `datagen` | Mensagens sintéticas | Gemini Flash-Lite | — |
 | `datagen_holdout` | Teste sintético de outro gerador (`modelo-dominio.md`, seção 4) | Groq `gpt-oss-120b`: família diferente do `datagen` | — |
+| `intent_baseline` | Só a pesquisa: o "só perguntar ao LLM" da `pesquisa-intencao` (temperatura 0, 10 s por tentativa, 25 s no total, 128 tokens) | Gemini Flash-Lite | — de propósito: uma resposta de outro modelo no meio misturaria dois modelos na mesma medida |
 
 **Provedores:**
 

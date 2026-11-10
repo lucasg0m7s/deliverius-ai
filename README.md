@@ -138,7 +138,7 @@ o mesmo cache produz arquivos idênticos byte a byte.
 uv run python -m deliverius.cli datagen world --seed 42      # só o mundo simulado, sem LLM
 uv run python -m deliverius.cli datagen scenarios --seed 42  # cenários de ponta a ponta, sem LLM
 uv run python -m deliverius.cli datagen all --seed 42        # tudo, em data/generated/v<versão>/, com manifest.json
-uv run python -m deliverius.cli datagen validate-human data/human-test/messages.csv
+uv run python -m deliverius.cli datagen validate-human data/human-test/human_test.csv
 ```
 
 O formato do conjunto de teste escrito por pessoas está em [`data/human-test/README.md`](data/human-test/README.md).
@@ -150,6 +150,22 @@ uv run python -m research.fraud.gate                # baixa dataset e modelo nas
 uv run python -m research.fraud.train               # treino, escolha, teste e registro no MLflow (mlruns/)
 uv run python -m research.fraud.publish             # ensaio da publicação; --confirm envia
 uv run python -m deliverius.cli fraud fetch-model   # o modelo que a aplicação carrega, conferido por SHA-256
+```
+
+### Pesquisa de intenção
+
+Quatro abordagens comparadas pelo mesmo código, sobre o texto já mascarado, com a regra de escolha escrita antes dos
+experimentos (`docs/ml-e-avaliacao.md`, seção 1.3). Na ordem:
+
+```bash
+uv run python -m research.intent.train                     # 1 e 2: TF-IDF e e5 + logística, só treino e validação
+uv run python -m research.intent.llm_baseline              # 4: o LLM na amostra da validação (Postgres no ar; sai com 2 se a cota do dia acabar)
+# 3: o notebook research/intent/notebooks/finetune_bertimbau.ipynb roda research.intent.finetune numa GPU do Kaggle
+uv sync --group research --group finetune                  # torch e transformers, só para exportar
+uv run python -m research.intent.export --checkpoint <pasta da execução>   # ONNX int8, conferido contra o PyTorch
+uv run python -m research.intent.evaluate                  # a avaliação final, uma vez, nos três testes
+uv run python -m research.intent.publish                   # ensaio da publicação do vencedor; --confirm envia
+uv run pytest -m finetune --no-cov                         # ajuste fino e exportação de um BERT minúsculo
 ```
 
 ## Qualidade

@@ -48,34 +48,59 @@ infraestrutura sem ganho. Os comandos, na ordem, ficam documentados no README; �
 | 4 | LLM sem treino (Gemini Flash-Lite, poucos exemplos no prompt) | Núcleo | O custo e a latência de "só perguntar ao LLM" |
 | 5 | LoRA num modelo pequeno (Qwen3-0.6B ou o sucessor da época), gerando intenção e entidades | Extra | Ajuste fino eficiente de um decodificador |
 
+**Entrada:** todo modelo treina e é avaliado sobre a saída de `privacy.mask_text`, a mesma função que a aplicação
+aplica antes de `classify_intent` (uma mensagem é a primeira da sua conversa). Isso evita diferença entre treino e
+serviço e mantém documento, telefone, e-mail e endereço fora do LLM da abordagem 4. Nomes próprios não são
+mascarados, na pesquisa como na aplicação (limite medido em `seguranca.md`).
+
 **Métricas, sempre nos três conjuntos de teste** (sintético do mesmo gerador, sintético de outro gerador, escrito
-por pessoas):
+por pessoas), lidos uma única vez, na avaliação final, com os candidatos congelados:
 
 - **F1 macro** (principal), com intervalo de confiança de 95% por bootstrap;
 - **recall da classe `sensitive`**, porque errar uma alergia é o pior erro possível;
-- **ECE** (erro de calibração), porque o roteador usa a confiança do modelo;
+- **ECE** (erro de calibração, 15 faixas de largura igual sobre a confiança da classe prevista), porque o roteador
+  usa a confiança do modelo;
 - **latência p50 e p95 em CPU**, uma mensagem por vez, que é como a aplicação usa;
 - **custo por mil mensagens** e **tamanho do modelo**.
 
-**Regra de escolha** (escrita antes dos resultados):
+**Regra de escolha** (escrita antes dos resultados; detalhada na change `pesquisa-intencao`):
 
-1. Maior F1 macro no **teste escrito por pessoas**.
-2. Com recall de `sensitive` ≥ 0,95 e p95 ≤ 100 ms em CPU.
-3. Se os intervalos de confiança se sobrepõem, vence o mais rápido e barato.
+1. **Elegível** é a abordagem com recall de `sensitive` ≥ 0,95 **nos três testes somados** (cerca de 105 mensagens
+   sensíveis; só o teste humano teria cerca de 14, e um erro derrubaria a regra) e p95 ≤ 100 ms em CPU.
+2. Entre as elegíveis, a **melhor** é a de maior F1 macro no **teste escrito por pessoas**.
+3. Para cada outra elegível, o intervalo de 95% da diferença de F1 (melhor − outra) por *bootstrap* pareado e
+   estratificado no teste humano (2.000 reamostragens). Intervalo que contém zero é empate; vence a mais rápida entre a
+   melhor e as que empatam com ela, e o tamanho desempata a latência. Dois intervalos que se sobrepõem não dizem que a
+   diferença é nula; a diferença pareada usa os mesmos exemplos nos dois modelos.
+4. Nenhuma elegível: nada é publicado, e a decisão volta ao autor.
+
+**A abordagem 4 roda numa amostra:** o teste humano inteiro e 20 mensagens por intenção de cada teste sintético
+(sorteio estratificado com semente), por causa da cota diária do Gemini. As outras abordagens também são medidas nessa
+amostra, lado a lado. O papel `intent_baseline` não tem modelo de reserva, para não misturar dois modelos na mesma
+medida, e o cache de respostas torna a execução retomável e repetível sem gastar cota.
 
 **Limiar de confiança do roteador:**
-- A calibração do BERTimbau é feita por *temperature scaling* no conjunto de validação.
-- O limiar é escolhido para que o erro entre as mensagens aceitas fique abaixo de 5%.
-- O relatório mostra a curva de cobertura × erro.
+- As abordagens 1 a 3 são calibradas por *temperature scaling* no conjunto de validação (log-verossimilhança, busca
+  escalar limitada); a abordagem 4 usa a confiança que o LLM declara, e o ECE mostra quanto ela vale.
+- O limiar é o menor `t` da validação tal que o erro entre as mensagens com confiança ≥ `t` fica em até 5%.
+- O relatório mostra a curva de cobertura × erro em cada conjunto e a cobertura e o erro com `t` em cada teste.
 
 **Análise de erros:** a matriz de confusão e 20 erros comentados à mão, por exemplo "confunde atraso com não
 entregue quando o cliente diz 'não chegou ainda'". Isso entra no relatório `docs/pesquisa-intencao.md`.
 
 **Hiperparâmetros do BERTimbau:**
-- taxa de aprendizado entre 2e-5 e 5e-5;
-- 3 a 4 épocas, com parada antecipada pelo F1 macro da validação;
-- sequência máxima de 128 tokens;
-- 3 sementes no modelo final, se a cota de GPU permitir, reportando média e desvio.
+- taxa de aprendizado em {2e-5, 3e-5, 5e-5}, escolhida na validação com uma semente;
+- até 4 épocas, com parada antecipada pelo F1 macro da validação (paciência 1), lote 16, aquecimento de 10%;
+- sequência máxima de 128 tokens, a menos que mais de 5% da validação passe disso (então 256);
+- 3 sementes na taxa escolhida, se a cota de GPU permitir, reportando média e desvio.
+
+**Exportação:** `torch.onnx.export` para ONNX e quantização int8 dinâmica do `onnxruntime` com pesos uint8 por canal,
+que roda em qualquer CPU com AVX2 (sem exigir VNNI). O ONNX fp32 tem de bater com o PyTorch nos logits (1e-4) e o int8
+tem de concordar no argmax em ≥ 99% da validação; se não concordar, fica o fp32.
+
+**Dependências:** o grupo `finetune` (torch, transformers, accelerate, datasets, onnx, onnxscript) fica fora do
+`research` e do CI. O ajuste fino roda no Kaggle, num notebook que só chama `research/intent/finetune.py`;
+localmente o grupo serve para exportar. Os testes que precisam dele levam o marcador `finetune`.
 
 ### 1.4 Antifraude de reembolso
 
