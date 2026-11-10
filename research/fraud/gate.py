@@ -17,11 +17,11 @@ from pathlib import Path
 import numpy as np
 import structlog
 
-from deliverius.artifacts import fetch_files
 from deliverius.cli.console import use_utf8_output
 from deliverius.config import Settings
 from deliverius.fraud import FraudScorer, LogisticFraudScorer, fetch_fraud_model, load_fraud_model
 from deliverius.fraud.models import ClaimContext
+from research.dataset import fetch_dataset
 from research.fraud.config import GateSection, load_config
 from research.fraud.dataset import ClaimTable, load_claim_table
 from research.fraud.evaluate import brier, pr_auc
@@ -84,9 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.WARNING))
     config = load_config()
     model_dir: Path = args.model_dir or Settings().fraud_model_dir
-    dataset_dir = config.dataset.directory
-    dataset_dir.mkdir(parents=True, exist_ok=True)
-    fetch_files(config.dataset.pinned, dataset_dir, config.dataset.model_files)
+    dataset_dir = fetch_dataset(config.dataset)
     model_dir.mkdir(parents=True, exist_ok=True)
     fetch_fraud_model(model_dir)
     scorer = LogisticFraudScorer(load_fraud_model(model_dir))

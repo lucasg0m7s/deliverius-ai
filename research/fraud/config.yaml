@@ -1,26 +1,7 @@
 # Refund fraud model research. Written before any run: the choice rule below uses validation only.
 seed: 20261109
 
-dataset:
-  directory: data/generated/v1.0.0
-  repository: G0m7s/deliverius-ai
-  version: 1.0.0
-  # Commit of the `v1.0.0` tag on the Hub: the CI gate downloads exactly these bytes.
-  revision: cc5be0958e3e4971c284031ceb6406c43e96ae84
-  files:
-    - {name: e2e_scenarios/test.jsonl, size_bytes: 372977, sha256: 7144ee4c9fe3a12019c475ac00a56dc5929dd32133bde24d3b6d7bb5b1b3bc42}
-    - {name: fraud_ground_truth/all.jsonl, size_bytes: 652621, sha256: c60be1f79db8f67be1a72e6c00babf6ee20821102e5d70416dd492ecdeeb0609}
-    - {name: fraud_history/test.jsonl, size_bytes: 226251, sha256: a91d5699f2160c5eebdc508210f8fec37901cecb38114608642582facd5adbfe}
-    - {name: fraud_history/train.jsonl, size_bytes: 1303965, sha256: 65675ec900159c7c565b3dd5141b443aff2a89c1a67e1ea51d40172e95996a81}
-    - {name: manifest.json, size_bytes: 4719, sha256: 8d0e7cd65527b2e5e9788cea0fd237749babbe9ed57689fc841906b7db6935f0}
-    - {name: messages/test.jsonl, size_bytes: 228657, sha256: 7080200624e1571af9cbe9f195ac1b566669b0c430800b5912def920e0b28312}
-    - {name: messages/train.jsonl, size_bytes: 1055794, sha256: 515bfccf9baa446585c7e3cc751361ac3a0c70b58389743a389b740f84e950c4}
-    - {name: messages/validation.jsonl, size_bytes: 214449, sha256: b71541fbf6a7dda352bb605092f3b798e90aa44c3ff9386f8e57f61da778b241}
-    - {name: messages_holdout/test.jsonl, size_bytes: 245560, sha256: 15b49fb0df29d4c2416766e006aebac0cc4c378eca6a5e64f6cc2faaf86b08f6}
-    - {name: policy_qa/test.jsonl, size_bytes: 11765, sha256: d98893480ce335b2dad49fa49f5f9a463c30e8476b40aea16e4517e3b13b223a}
-    - {name: world/customers.jsonl, size_bytes: 642145, sha256: 754f2cbe2741c3d654b8d7bc17d63ee4dbf0e3412c23baba5c9ec4ad425a027d}
-    - {name: world/orders.jsonl, size_bytes: 30430717, sha256: 90f588dc8acad69d1813a5b27611b572ff98a043d10c895d54702fc5a4a26735}
-    - {name: world/restaurants.jsonl, size_bytes: 5673, sha256: 19a83d9715f027db2ec59ddd7e01b2c544e4f061a3108b3232489e13e4a315bf}
+# The dataset is pinned in `research/dataset.yaml`, shared with the intent research.
 
 split:
   year: 2026

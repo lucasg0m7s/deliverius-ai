@@ -1,10 +1,10 @@
-"""Publishing: a dry run by default, never over an existing tag, resumable after a crash."""
+"""Publishing the fraud model: the staged folder, the card, and the flow through `research.hub`."""
 
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
 from pydantic import SecretStr
+from support.fake_hub import FakeHub
 from support.research_data import synthetic_table
 
 from deliverius.artifacts import ModelFile, PinnedRepository, sha256_of
@@ -13,37 +13,12 @@ from deliverius.fraud.model_files import FraudManifest, load_fraud_model
 from research.fraud import publish
 from research.fraud.candidate import candidate_from, write_candidate
 from research.fraud.config import load_config
-from research.fraud.publish import ModelHub, PublishError, send, stage
+from research.fraud.publish import stage
 from research.fraud.train import research_summary, run_research
+from research.hub import ModelHub, PublishError
 
 CONFIG = load_config().model_copy(update={"bootstrap_resamples": 50})
 CLEAN = CommitInfo(commit="a" * 40, dirty=False)
-
-
-@dataclass
-class FakeHub:
-    existing_tags: set[str] = field(default_factory=set)
-    fail_on_tag: bool = False
-    uploads: list[set[str]] = field(default_factory=list)
-    tagged: list[tuple[str, str]] = field(default_factory=list)
-    repos: list[str] = field(default_factory=list)
-
-    def create_model_repo(self, repo_id: str) -> None:
-        self.repos.append(repo_id)
-
-    def tags(self, repo_id: str) -> frozenset[str]:
-        return frozenset(self.existing_tags)
-
-    def upload_folder(self, repo_id: str, folder: Path, message: str) -> str:
-        self.uploads.append({path.name for path in folder.iterdir()})
-        return "b" * 40
-
-    def create_tag(self, repo_id: str, tag: str, revision: str) -> None:
-        if self.fail_on_tag:
-            self.fail_on_tag = False
-            raise ConnectionError("dropped")
-        self.existing_tags.add(tag)
-        self.tagged.append((tag, revision))
 
 
 @pytest.fixture(scope="module")
@@ -128,30 +103,6 @@ def test_confirm_uploads_and_tags_the_commit(
     assert hub.tagged == [("v1.0.0", "b" * 40)]
     assert tokens[0].get_secret_value() == "test-token"
     assert "b" * 40 in capsys.readouterr().out
-
-
-def test_an_existing_tag_is_refused_before_any_upload(candidate_dir: Path, tmp_path: Path) -> None:
-    hub = FakeHub(existing_tags={"v1.0.0"})
-
-    with pytest.raises(PublishError) as refused:
-        send(staged(candidate_dir, tmp_path), hub)
-
-    assert refused.value.rule == "publish.tag_exists"
-    assert hub.uploads == []
-
-
-def test_a_crash_between_upload_and_tag_is_resumed_by_running_again(
-    candidate_dir: Path, tmp_path: Path
-) -> None:
-    hub = FakeHub(fail_on_tag=True)
-    plan = staged(candidate_dir, tmp_path)
-
-    with pytest.raises(ConnectionError):
-        send(plan, hub)
-    revision = send(plan, hub)
-
-    assert len(hub.uploads) == 2
-    assert hub.tagged == [("v1.0.0", revision)]
 
 
 def test_a_hub_failure_reports_only_the_error_type(

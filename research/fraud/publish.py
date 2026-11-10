@@ -1,26 +1,19 @@
 """Publishes the chosen fraud model to the Hugging Face Hub, with its card and manifest.
 
 `python -m research.fraud.publish` is a dry run: it builds the folder and shows the files, their
-hashes and the destination, and sends nothing. `--confirm` creates the repository, uploads and
-tags the commit with the model version. A version already tagged is refused before any upload; a
-run that died between the upload and the tag is simply run again. The card is in English because
-the model is public; what the script tells the author is Portuguese.
+hashes and the destination, and sends nothing. `--confirm` sends it through `research.hub`, which
+refuses a version already tagged and resumes a run that died between the upload and the tag. The
+card is in English because the model is public; what the script tells the author is Portuguese.
 """
 
 import argparse
 import sys
-import tempfile
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Protocol
-
-from huggingface_hub import HfApi
-from pydantic import SecretStr
+from typing import Any, Final
 
 from deliverius.artifacts import sha256_of
 from deliverius.cli.console import use_utf8_output
-from deliverius.config import Settings
 from deliverius.fraud.features import FEATURE_NAMES, FEATURES_VERSION, schema_hash
 from deliverius.fraud.model_files import (
     CARD_FILE,
@@ -28,63 +21,19 @@ from deliverius.fraud.model_files import (
     FraudManifest,
     ManifestFile,
 )
-from deliverius.shared.errors import DeliveriusError
 from research.fraud.candidate import MODEL_FILES, canonical_json, read_candidate
 from research.fraud.config import ResearchConfig, load_config
 from research.fraud.train import DEFAULT_CANDIDATE
+from research.hub import (
+    HubFactory,
+    PublishError,
+    Staged,
+    Upload,
+    huggingface_model_hub,
+    publish,
+)
 
 MANIFEST_NAME: Final = "manifest.json"
-
-
-class PublishError(DeliveriusError):
-    """Publishing cannot go on; `rule` is a stable code and `detail` never holds a secret."""
-
-    def __init__(self, rule: str, detail: str | None = None) -> None:
-        super().__init__(rule if detail is None else f"{rule}: {detail}")
-        self.rule = rule
-        self.detail = detail
-
-
-class ModelHub(Protocol):
-    """What publishing asks of the Hub; a test replaces it."""
-
-    def create_model_repo(self, repo_id: str) -> None: ...
-
-    def tags(self, repo_id: str) -> frozenset[str]: ...
-
-    def upload_folder(self, repo_id: str, folder: Path, message: str) -> str:
-        """Uploads every file of `folder` in one commit and returns the commit hash."""
-        ...
-
-    def create_tag(self, repo_id: str, tag: str, revision: str) -> None: ...
-
-
-class HuggingFaceModelHub:
-    def __init__(self, api: HfApi) -> None:
-        self._api = api
-
-    def create_model_repo(self, repo_id: str) -> None:
-        self._api.create_repo(repo_id=repo_id, repo_type="model", private=False, exist_ok=True)
-
-    def tags(self, repo_id: str) -> frozenset[str]:
-        refs = self._api.list_repo_refs(repo_id, repo_type="model")
-        return frozenset(ref.name for ref in refs.tags)
-
-    def upload_folder(self, repo_id: str, folder: Path, message: str) -> str:
-        commit = self._api.upload_folder(
-            repo_id=repo_id, repo_type="model", folder_path=folder, commit_message=message
-        )
-        return str(commit.oid)
-
-    def create_tag(self, repo_id: str, tag: str, revision: str) -> None:
-        self._api.create_tag(repo_id, tag=tag, revision=revision, repo_type="model")
-
-
-type HubFactory = Callable[[SecretStr], ModelHub]
-
-
-def huggingface_model_hub(token: SecretStr) -> ModelHub:
-    return HuggingFaceModelHub(HfApi(token=token.get_secret_value()))
 
 
 @dataclass(frozen=True)
@@ -95,6 +44,9 @@ class PublishPlan:
     manifest: FraudManifest
     manifest_size: int
     manifest_sha256: str
+
+    def upload(self) -> Upload:
+        return Upload(self.repo_id, self.tag, self.folder, f"Fraud model {self.tag}")
 
 
 def stage(candidate_dir: Path, folder: Path, config: ResearchConfig) -> PublishPlan:
@@ -141,16 +93,6 @@ def stage(candidate_dir: Path, folder: Path, config: ResearchConfig) -> PublishP
     )
 
 
-def send(plan: PublishPlan, hub: ModelHub) -> str:
-    """Upload and tag; returns the commit to pin as `REVISION`. Never overwrites a version."""
-    hub.create_model_repo(plan.repo_id)
-    if plan.tag in hub.tags(plan.repo_id):
-        raise PublishError("publish.tag_exists", plan.tag)
-    revision = hub.upload_folder(plan.repo_id, plan.folder, f"Fraud model {plan.tag}")
-    hub.create_tag(plan.repo_id, plan.tag, revision)
-    return revision
-
-
 def plan_lines(plan: PublishPlan) -> list[str]:
     return [
         f"Destino: https://huggingface.co/{plan.repo_id} (tag {plan.tag})",
@@ -170,37 +112,12 @@ def main(argv: list[str] | None = None, hub_for: HubFactory = huggingface_model_
     args = parser.parse_args(argv)
     use_utf8_output()
     config = load_config()
-    with tempfile.TemporaryDirectory(prefix="deliverius-fraud-") as staging:
-        try:
-            plan = stage(args.candidate, Path(staging), config)
-            for line in plan_lines(plan):
-                sys.stdout.write(f"{line}\n")
-            if not args.confirm:
-                sys.stdout.write("Ensaio: nada foi enviado. Use --confirm para publicar.\n")
-                return 0
-            revision = _send_reporting_only_the_type(plan, hub_for(_token()))
-        except PublishError as error:
-            sys.stderr.write(f"Publicação recusada: {error}\n")
-            return 1
-    sys.stdout.write(f'Publicado. Fixar REVISION = "{revision}".\n')
-    return 0
 
+    def staged(folder: Path) -> Staged:
+        plan = stage(args.candidate, folder, config)
+        return Staged(plan.upload(), tuple(plan_lines(plan)))
 
-def _token() -> SecretStr:
-    token = Settings().hf_token
-    if token is None:
-        raise PublishError("publish.token_missing", "HF_TOKEN")
-    return token
-
-
-def _send_reporting_only_the_type(plan: PublishPlan, hub: ModelHub) -> str:
-    try:
-        return send(plan, hub)
-    except PublishError:
-        raise
-    except Exception as error:
-        # The library's error text can carry request details: only the type is kept.
-        raise PublishError("publish.hub_failed", type(error).__name__) from None
+    return publish(staged, confirm=args.confirm, hub_for=hub_for, prefix="deliverius-fraud-")
 
 
 def _manifest_metrics(research: dict[str, Any]) -> dict[str, dict[str, float]]:

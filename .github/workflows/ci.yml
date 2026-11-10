@@ -49,7 +49,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: data/generated/v1.0.0
-          # The dataset commit pinned in `research/fraud/config.yaml`; a test keeps the two equal.
+          # The dataset commit pinned in `research/dataset.yaml`; a test keeps the two equal.
           key: dataset-v1.0.0-cc5be095
       - name: Fraud model (pinned revision and manifest, SHA-256 checked, skipped when cached)
         run: uv run python -m deliverius.cli fraud fetch-model

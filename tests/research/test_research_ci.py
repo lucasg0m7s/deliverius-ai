@@ -4,7 +4,7 @@ from pathlib import Path
 
 from deliverius.config import Settings
 from deliverius.fraud.model_files import REVISION
-from research.fraud.config import load_config
+from research.dataset import load_dataset_pin
 
 WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
 STEPS = WORKFLOW.read_text(encoding="utf-8")
@@ -18,7 +18,7 @@ def test_the_model_cache_key_names_the_pinned_revision() -> None:
 
 
 def test_the_dataset_cache_key_names_the_pinned_dataset_commit() -> None:
-    dataset = load_config().dataset
+    dataset = load_dataset_pin()
 
     assert f"key: dataset-v{dataset.version}-{dataset.revision[:8]}" in STEPS
     assert f"path: {dataset.directory.as_posix()}" in STEPS

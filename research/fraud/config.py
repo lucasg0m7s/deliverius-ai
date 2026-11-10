@@ -1,4 +1,4 @@
-"""The research configuration (`config.yaml`), read once and validated."""
+"""The research configuration (`config.yaml` and the shared dataset pin), read once, validated."""
 
 from pathlib import Path
 from typing import Any, Final
@@ -6,38 +6,13 @@ from typing import Any, Final
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
-from deliverius.artifacts import ModelFile, PinnedRepository
+from research.dataset import DatasetPin, load_dataset_pin
 
 CONFIG_PATH: Final = Path(__file__).with_name("config.yaml")
 
 
 class _Section(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-class PinnedFile(_Section):
-    name: str
-    size_bytes: int = Field(gt=0)
-    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-
-    def to_model_file(self) -> ModelFile:
-        return ModelFile(self.name, self.size_bytes, self.sha256)
-
-
-class DatasetSection(_Section):
-    directory: Path
-    repository: str
-    version: str
-    revision: str = Field(pattern=r"^[0-9a-f]{40}$")
-    files: tuple[PinnedFile, ...]
-
-    @property
-    def pinned(self) -> PinnedRepository:
-        return PinnedRepository(self.repository, self.revision, "dataset")
-
-    @property
-    def model_files(self) -> tuple[ModelFile, ...]:
-        return tuple(file.to_model_file() for file in self.files)
 
 
 class SplitSection(_Section):
@@ -78,7 +53,7 @@ class ModelSection(_Section):
 
 class ResearchConfig(_Section):
     seed: int
-    dataset: DatasetSection
+    dataset: DatasetPin
     split: SplitSection
     review_cost_cents: int = Field(gt=0)
     bootstrap_resamples: int = Field(gt=0)
@@ -89,5 +64,9 @@ class ResearchConfig(_Section):
     model: ModelSection
 
 
-def load_config(path: Path = CONFIG_PATH) -> ResearchConfig:
-    return ResearchConfig.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+def load_config(path: Path = CONFIG_PATH, dataset: DatasetPin | None = None) -> ResearchConfig:
+    """`dataset` defaults to the shared pin in `research/dataset.yaml`."""
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return ResearchConfig.model_validate(
+        {**document, "dataset": dataset if dataset is not None else load_dataset_pin()}
+    )
