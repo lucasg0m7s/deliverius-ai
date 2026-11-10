@@ -27,7 +27,6 @@ import mlflow
 import numpy as np
 import onnxruntime as ort
 import structlog
-from onnxruntime.quantization import QuantType, quantize_dynamic
 from tokenizers import Tokenizer
 
 from deliverius.cli.commit import read_commit_info
@@ -148,7 +147,10 @@ def quantize_int8(fp32: Path, destination: Path) -> None:
     The torch exporter writes intermediate shapes (`value_info`) that the quantizer's own shape
     inference contradicts; they are dropped first and inferred again by the quantizer.
     """
-    import onnx  # noqa: PLC0415 - the `finetune` group
+    # Both need the `finetune` group: `onnxruntime.quantization` imports `onnx` itself, so a
+    # module-level import would break test collection on CI, which does not install the group.
+    import onnx  # noqa: PLC0415
+    from onnxruntime.quantization import QuantType, quantize_dynamic  # noqa: PLC0415
 
     graph = onnx.load(str(fp32))
     del graph.graph.value_info[:]
